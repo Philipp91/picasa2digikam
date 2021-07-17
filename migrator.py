@@ -117,8 +117,13 @@ def migrate_file(filename: str, image_id: int, ini_section: configparser.Section
     faces = ini_section.get('faces')
     if faces:
         used_ini_keys.add('faces')
-        for face_data in faces.split(';'):
-            migrate_face(image_id, filename, face_data, db, contact_to_tag, dry_run=dry_run)
+        if filename.lower().endswith('.psd'):
+            # Note: digiKam doesn't seem to know the size of PSD files and thus also
+            # can't place face tags on them.
+            logging.warning('Skipping faces on %s because of PSD format' % filename)
+        else:
+            for face_data in faces.split(';'):
+                migrate_face(image_id, filename, face_data, db, contact_to_tag, dry_run=dry_run)
 
     unused_ini_keys = set(ini_section.keys()) - used_ini_keys
     if unused_ini_keys:

@@ -1,4 +1,6 @@
 import logging
+import os
+import psutil
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path, WindowsPath
@@ -13,7 +15,7 @@ _TAG_PROPERTY_FACE_ENGINE = 'faceEngineId'
 class DigikamDb(object):
     file: Path
     conn: sqlite3.Connection
-    album_roots: Dict[int, Path]  # ID => path
+    album_roots: Dict[Path, int]  # path => ID
     person_root_tag: int  # Tag ID of the "Persons" tag.
     internal_tags_id: int  # Tag ID of the "_Digikam_Internal_Tags_" tag.
     pick_tags: List[int]  # IDs of the "Pick" labels
@@ -23,8 +25,24 @@ class DigikamDb(object):
         self.file = file
         self.conn = sqlite3.connect(file)
 
-        self.album_roots = {i: Path(path) for i, path in
-                            self._fetchdict('SELECT id, specificPath FROM AlbumRoots WHERE status = 0').items()}
+        dev_to_mountpoints: Dict[str, Set[str]] = {}
+        for sdiskpart in psutil.disk_partitions():
+            dev_to_mountpoints.setdefault(sdiskpart.device, set()).add(sdiskpart.mountpoint)
+
+        self.album_roots = {}
+        for row in self.conn.cursor().execute('SELECT id, type, identifier, specificPath FROM AlbumRoots WHERE status = 0'):
+            id, type, identifier, specificPath = row
+            if type != 1:
+                continue  # Skip all that aren't local disks.
+            assert identifier.startswith('volumeid:?uuid=')
+            uuid = identifier[15:].upper()
+            # TODO This won't work on Windows.
+            dev = os.path.realpath(Path('/dev/disk/by-uuid') / uuid)
+            if specificPath.startswith('/'):
+                specificPath = specificPath[1:]
+            for mountpoint in dev_to_mountpoints[dev]:
+                self.album_roots[Path(mountpoint) / specificPath] = id
+
         self.person_root_tag = self._detect_person_root_tag()
         self.internal_tags_id = self.find_tag(0, _INTERNAL_ROOT_TAG_NAME)
         self.star_tag = self.find_tag(self.internal_tags_id, 'Pick Label Accepted')
@@ -41,9 +59,7 @@ class DigikamDb(object):
 
     def find_album_by_dir(self, path: Path) -> int:
         """Returns ID of the Album that contains the given path."""
-        if isinstance(path, WindowsPath) and path.is_absolute():
-            path = path.relative_to(path.drive)  # Strip 'C:' or so from Windows, which the digiKam path doesn't contain
-        for root_id, root_path in self.album_roots.items():
+        for root_path, root_id in self.album_roots.items():
             try:
                 relative_path = path.relative_to(root_path)
             except ValueError:
@@ -53,7 +69,7 @@ class DigikamDb(object):
             if album_id is None:
                 raise ValueError('No digiKam Album found for %s under root %s' % (path, root_id))
             return album_id
-        raise ValueError('No digiKam AlbumRoot found for %s' % path)
+        raise ValueError('No digiKam AlbumRoot found for %s, only have %s' % (path, self.album_roots))
 
     def get_album_images(self, album_id: int) -> Dict[str, id]:
         """Returns a dict from filename to id in Images."""

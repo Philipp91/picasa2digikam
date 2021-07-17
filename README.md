@@ -23,8 +23,8 @@ the original files should remain untouched).
 This script writes into the digiKam database. If you already have photos in digiKam, you should *at least* make a
 backup. Furthermore, this script has been tested only when writing into an "empty" digiKam instance, so you might get
 better results by starting with an empty instance too. You may also want to make a backup of the photo directories,
-though the script doesn't write there. Depending on your metadata sync settings in digiKam, it may (or not) write some
-metadata to EXIF tags in your photos.
+though the script doesn't write there. Depending on your metadata sync settings in digiKam, digiKam itself may (or not)
+write some of the added metadata to EXIF tags in your photos.
 
 0. Optional: As this is your last chance to make edits in Picasa that will also be reflected in digiKam, you may want to
    do some cleanups there:

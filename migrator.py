@@ -14,6 +14,8 @@ _PICASA_TAG_NAME = 'Picasa'
 _UNKNOWN_FACE_ID = 'ffffffffffffffff'
 _FACE_TAG_REGION_PROPERTY = 'tagRegion'
 
+ContactTags = Dict[str, Optional[int]]
+
 
 def _is_photo_file(file: str) -> bool:
     file = file.lower()
@@ -22,14 +24,18 @@ def _is_photo_file(file: str) -> bool:
 
 def migrate_directories_under(input_root_dir: Path, db: DigikamDb, dry_run: bool):
     """Traverses directory tree to find directories to migrate."""
+    contact_tags_per_dir: Dict[Path, ContactTags] = {}
     for input_dir, subdirs, files in os.walk(input_root_dir):
+        dir = Path(input_dir)
         if _PICASA_INI_FILE in files:
-            migrate_directory(Path(input_dir), files, db, dry_run=dry_run)
+           contact_tags_per_dir[dir] = migrate_directory(dir, files, db, contact_tags_per_dir, dry_run=dry_run)
         elif any([_is_photo_file(file) for file in files]):
-            logging.warning('Found photos but no %s in %s' % (_PICASA_INI_FILE, input_dir))
+            logging.warning('Found photos but no %s in %s' % (_PICASA_INI_FILE, dir))
 
 
-def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb, dry_run: bool):
+def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
+                      contact_tags_per_dir: Dict[Path, ContactTags],
+                      dry_run: bool) -> ContactTags:
     """Migrates metadata of all photo files in the given directory."""
     logging.info('===========================================================================================')
     logging.info('Now migrating %s' % input_dir)
@@ -46,7 +52,16 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb, dry_run:
 
     # Create or look up digiKam tags for each Picasa album and contact/person.
     album_to_tag = _map_albums_to_tags(ini, db, used_ini_sections, dry_run=dry_run)
-    contact_to_tag = _map_contacts_to_tags(ini['Contacts2'], db, dry_run=dry_run)
+    self_contact_to_tag = _map_contacts_to_tags(ini['Contacts2'], db, dry_run=dry_run)
+
+    # Merge contacts declared in parent ini files.
+    contact_to_tag = self_contact_to_tag.copy()
+    for parent_dir in input_dir.parents:
+        for contact_id, tag_id in contact_tags_per_dir.get(parent_dir, {}).items():
+            if contact_id in contact_to_tag:
+                assert contact_to_tag[contact_id] == tag_id
+            else:
+                contact_to_tag[contact_id] = tag_id
 
     # Migrate file by file.
     for filename in filter(_is_photo_file, files):
@@ -72,6 +87,7 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb, dry_run:
     if unused_ini_sections:
         logging.warning('Unused INI sections in %s: %s' % (ini_file, unused_ini_sections))
 
+    return self_contact_to_tag  # For use in subdirectories
 
 def migrate_file(filename: str, image_id: int, ini_section: configparser.SectionProxy, db: DigikamDb,
                  album_to_tag: Dict[str, int],  # Picasa ID -> digiKam Tag ID
@@ -159,7 +175,7 @@ def _map_albums_to_tags(
 
 def _map_contacts_to_tags(
         contacts_section: configparser.SectionProxy, db: DigikamDb, dry_run: bool
-) -> Dict[str, Optional[int]]:  # Picasa ID -> digiKam Tag ID
+) -> ContactTags:  # Picasa ID -> digiKam Tag ID
     result = {}
     for contact_id, value in contacts_section.items():
         person_name = value.split(';')[0]

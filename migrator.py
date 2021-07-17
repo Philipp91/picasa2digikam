@@ -102,28 +102,34 @@ def migrate_file(filename: str, image_id: int, ini_section: configparser.Section
     if faces:
         used_ini_keys.add('faces')
         for face_data in faces.split(';'):
-            migrate_face(image_id, face_data, db, contact_to_tag, dry_run=dry_run)
+            migrate_face(image_id, filename, face_data, db, contact_to_tag, dry_run=dry_run)
 
     unused_ini_keys = set(ini_section.keys()) - used_ini_keys
     if unused_ini_keys:
         logging.warning('Unused INI keys for %s: %s' % (filename, unused_ini_keys))
 
 
-def migrate_face(image_id: int, face_data: str, db: DigikamDb, contact_to_tag: Dict[str, Optional[int]], dry_run: bool):
+def migrate_face(image_id: int, filename: str, face_data: str, db: DigikamDb, contact_to_tag: Dict[str, Optional[int]], dry_run: bool):
     face_data = face_data.split(',')
     assert len(face_data) == 2
     if face_data[1] == _UNKNOWN_FACE_ID:
         return
-    tag_id = contact_to_tag[face_data[1]]
+    contact_id = face_data[1]
+    tag_id = contact_to_tag[contact_id]
     if tag_id is None:
         return  # Skip silently, as _map_contacts_to_tags() already warns about unmapped contacts.
+
+    if db.image_has_tag(image_id, tag_id):
+        logging.warning(
+            'Not applying face %s (%s) to %s (%s) because it already has that face tag' % (tag_id, contact_id, image_id, filename))
+        return
 
     # Convert the rectangle.
     image_size = db.get_image_size(image_id)
     picasa_rect = rect64.parse_rect64(face_data[0])
     digikam_rect = rect64.to_digikam_rect(image_size, picasa_rect)
 
-    logging.debug('Adding face %s at %s to image %s' % (tag_id, digikam_rect, image_id))
+    logging.debug('Adding face %s (%s) at %s to %s (%s)' % (tag_id, contact_id, digikam_rect, image_id, filename))
     if dry_run:
         return
 

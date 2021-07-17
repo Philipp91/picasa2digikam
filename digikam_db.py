@@ -124,6 +124,12 @@ class DigikamDb(object):
                                (tag_id, _TAG_PROPERTY_FACE_ENGINE, person_name)])
         return tag_id
 
+    def image_has_tag(self, image_id: int, tag_id: int) -> bool:
+        """Returns true if the given image already has the given tag."""
+        return self._fetchcell(
+            'SELECT tagid FROM ImageTags WHERE imageid = ? AND tagid = ?',
+            (image_id, tag_id)) is not None
+
     def image_has_pick_tag(self, image_id: int) -> bool:
         """Returns true if the given image has any of the (four) "Pick" tags."""
         return self._fetchcell(

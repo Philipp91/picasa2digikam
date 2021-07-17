@@ -4,3 +4,5 @@
 .idea/vcs.xml
 
 *.py[cod]
+
+test.sh

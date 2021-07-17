@@ -1,3 +1,5 @@
+# python3 -m unittest rect64_test
+
 import unittest
 
 from rect64 import parse_hexfloat, parse_rect64, to_digikam_rect
@@ -55,6 +57,11 @@ class TestRect64Parser(unittest.TestCase):
         # A manually added digiKam tag gives <rect x="2291" y="1975" width="183" height="229"/>, matching Photoshop.
         self.assertEqual('<rect x="2284" y="1974" width="190" height="229"/>',
                          to_digikam_rect((4912, 3264, 8), parse_rect64('rect64(8d22b337991ec231)')))
+
+    def test_to_digikam_rect_short_hex(self):
+        # Image ID 254, DSC00040.JPG has resolution 2304x1296, orientation 1.
+        self.assertEqual('<rect x="0" y="0" width="670" height="720"/>',
+                         to_digikam_rect((2304, 1296, 1), parse_rect64('rect64(4a8e8e6b)')))
 
 
 if __name__ == '__main__':

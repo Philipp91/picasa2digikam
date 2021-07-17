@@ -48,11 +48,11 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
     ini = configparser.ConfigParser()
     ini_file = input_dir / _PICASA_INI_FILE
     ini.read(ini_file, encoding='utf8')
-    used_ini_sections = {'Picasa', 'Contacts2'}
+    used_ini_sections = {'Picasa', 'Contacts', 'Contacts2'}
 
     # Create or look up digiKam tags for each Picasa album and contact/person.
     album_to_tag = _map_albums_to_tags(ini, db, used_ini_sections, dry_run=dry_run)
-    self_contact_to_tag = _map_contacts_to_tags(ini['Contacts2'], db, dry_run=dry_run)
+    self_contact_to_tag = _map_contacts_to_tags(ini['Contacts2'], db, dry_run=dry_run) if 'Contacts2' in ini else {}
 
     # Merge contacts declared in parent ini files.
     contact_to_tag = self_contact_to_tag.copy()

@@ -61,13 +61,17 @@ class DigikamDb(object):
         """Returns ID of the Album that contains the given path."""
         for root_path, root_id in self.album_roots.items():
             try:
-                relative_path = path.relative_to(root_path)
+                relative_path = str(path.relative_to(root_path))
+                if relative_path == '.':
+                    relative_path = '/'  # Different ways of expressing the root.
+                else:
+                    relative_path = '/' + relative_path  # digiKam stores them with a leading slash, weirdly.
             except ValueError:
                 continue
-            album_id = self._fetchcell('SELECT id FROM Albums WHERE albumRoot = ? AND relativePath = "/" || ?',
-                                       (root_id, str(relative_path)))
+            album_id = self._fetchcell('SELECT id FROM Albums WHERE albumRoot = ? AND relativePath = ?',
+                                       (root_id, relative_path))
             if album_id is None:
-                raise ValueError('No digiKam Album found for %s under root %s' % (path, root_id))
+                raise ValueError('No digiKam Album found for %s (relative path %s) under root %s' % (path, relative_path, root_id))
             return album_id
         raise ValueError('No digiKam AlbumRoot found for %s, only have %s' % (path, self.album_roots))
 

@@ -170,6 +170,9 @@ def _map_albums_to_tags(
         if section_name.startswith('.album:'):
             album_id = section_name[7:]
             section = ini[section_name]
+            if not 'name' in section:
+                logging.debug('Skipping unnamed album %s' % album_id)
+                continue
             assert section['name']
             used_ini_sections.add(section_name)
             assert album_id == section['token']

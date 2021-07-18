@@ -38,6 +38,9 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
                       dry_run: bool) -> ContactTags:
     """Migrates metadata of all photo files in the given directory."""
     logging.info('===========================================================================================')
+    if input_dir.name == '.picasaoriginals':
+        logging.info('Skipping %s' % input_dir)
+        return {}
     logging.info('Now migrating %s' % input_dir)
 
     # Find digiKam album.
@@ -80,9 +83,9 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
     unused_ini_sections = set(ini.sections()) - used_ini_sections
     unused_photo_sections = {section for section in unused_ini_sections if _is_photo_file(section)}
     if unused_photo_sections:
-        logging.info(('Some files have metadata in %s but are gone ' +
-                      '(probably fine, they might have been deleted or moved elsewhere on purpose): %s')
-                     % (ini_file, unused_photo_sections))
+        logging.warning(('Some files have metadata in %s but are gone ' +
+                         '(probably fine, they might have been deleted or moved elsewhere on purpose): %s')
+                        % (ini_file, unused_photo_sections))
     unused_ini_sections -= unused_photo_sections
     if unused_ini_sections:
         logging.warning('Unused INI sections in %s: %s' % (ini_file, unused_ini_sections))

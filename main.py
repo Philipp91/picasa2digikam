@@ -17,8 +17,8 @@ def init_argparse() -> ArgumentParser:
     parser.add_argument('--digikam_db', required=True, type=Path,
                         help='Path do digiKam\'s digikam4.db file.')
     parser.add_argument('--dry_run', action='store_true')
-    parser.add_argument('--verbose', '-v', action='count', default=5,
-                        help='Log verbosity. E.g. pass -vvvvvv to see debug output.')
+    parser.add_argument('--verbose', '-v', action='count', default=0,
+                        help='Log verbosity. Pass -vv to see debug output.')
     return parser
 
 
@@ -32,7 +32,7 @@ def main() -> None:
 
     parser = init_argparse()
     args = parser.parse_args()
-    log_handler.setLevel(70 - (10 * args.verbose) if args.verbose > 0 else 0)
+    log_handler.setLevel(30 - (10 * args.verbose))
 
     logging.info('Inspecting existing digiKam database')
     db = digikam_db.DigikamDb(args.digikam_db)

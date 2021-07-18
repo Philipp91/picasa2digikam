@@ -2,7 +2,9 @@
 """A script to import picasa.ini files into digiKam's SQLite database."""
 
 import logging
+import shutil
 import sys
+import time
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -33,6 +35,11 @@ def main() -> None:
     parser = init_argparse()
     args = parser.parse_args()
     log_handler.setLevel(30 - (10 * args.verbose))
+
+    if not args.dry_run:
+        backup_path = '%s.bak.%i' % (args.digikam_db, time.time())
+        logging.info('Creating database backup at %s')
+        shutil.copyfile(args.digikam_db, backup_path)
 
     logging.info('Inspecting existing digiKam database')
     db = digikam_db.DigikamDb(args.digikam_db)

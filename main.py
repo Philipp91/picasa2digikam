@@ -50,6 +50,8 @@ def main() -> None:
         migrator.migrate_directories_under(input_root_dir=args.photos_dir, db=db, dry_run=args.dry_run)
     db.close()
 
+    logging.info('Done')
+
 
 if __name__ == '__main__':
     main()

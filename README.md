@@ -18,6 +18,10 @@ the original files should remain untouched).
       touches every single file on disk, which might not be desirable) as an alternative way of migrating your face
       tags.
 
+## Installation
+
+Clone the repository and `cd` into it. Install `pip3 install psutil`. On Windows, also `pip3 install pywin32`.
+
 ## Suggested usage
 
 This script writes into the digiKam database. If you already have photos in digiKam, you should *at least* make a

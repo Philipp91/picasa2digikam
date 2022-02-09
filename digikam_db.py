@@ -4,7 +4,7 @@ import psutil
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path, WindowsPath
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 _INTERNAL_ROOT_TAG_NAME = '_Digikam_Internal_Tags_'
 _TAG_PROPERTY_PERSON = 'person'
@@ -25,23 +25,40 @@ class DigikamDb(object):
         self.file = file
         self.conn = sqlite3.connect(file)
 
-        dev_to_mountpoints: Dict[str, Set[str]] = {}
-        for sdiskpart in psutil.disk_partitions():
-            dev_to_mountpoints.setdefault(sdiskpart.device, set()).add(sdiskpart.mountpoint)
+        if os.name == 'nt':  # Windows
+            import win32api  # From the pywin32 PIP package.
+            serial_to_mountpoints: Dict[int, Set[str]] = {}
+            for sdiskpart in psutil.disk_partitions():
+                _, serial, _, _, _ = win32api.GetVolumeInformation(sdiskpart.mountpoint)
+                if serial < 0:
+                    serial = serial + (1 << 32)  # Convert int32 to uint32
+                serial_to_mountpoints.setdefault(serial, set()).add(sdiskpart.mountpoint)
+            logging.info('serial_to_mountpoints=%s' % serial_to_mountpoints)
+            def volume_uuid_to_mountpoints(uuid: str) -> Set[str]:
+                # On Windows, digiKam uses the serial number in hex format as the UUID:
+                # https://invent.kde.org/frameworks/solid/-/blob/006e013d18c20cf2c98cf1776d768476978a1a63/src/solid/devices/backends/win/winstoragevolume.cpp#L57
+                return serial_to_mountpoints[int(uuid, 16)]
+        else:  # Tested on Linux
+            dev_to_mountpoints: Dict[str, Set[str]] = {}
+            for sdiskpart in psutil.disk_partitions():
+                dev_to_mountpoints.setdefault(sdiskpart.device, set()).add(sdiskpart.mountpoint)
+            logging.info('dev_to_mountpoints=%s' % dev_to_mountpoints)
+            def volume_uuid_to_mountpoints(uuid: str) -> Set[str]:
+                # On Unix, we use a trick with realpath and /dev/disk/by-uuid' to find the main mount point.
+                return dev_to_mountpoints[os.path.realpath(Path('/dev/disk/by-uuid') / uuid.upper())]
 
         self.album_roots = {}
         for row in self.conn.cursor().execute('SELECT id, type, identifier, specificPath FROM AlbumRoots WHERE status = 0'):
-            id, type, identifier, specificPath = row
+            id, type, identifier, specific_path = row
             if type != 1:
-                continue  # Skip all that aren't local disks.
+                logging.info('Skipping album %s at %s on %s because it is not a local disk' % (id, specific_path, identifier))
+                continue
             assert identifier.startswith('volumeid:?uuid=')
-            uuid = identifier[15:].upper()
-            # TODO This won't work on Windows.
-            dev = os.path.realpath(Path('/dev/disk/by-uuid') / uuid)
-            if specificPath.startswith('/'):
-                specificPath = specificPath[1:]
-            for mountpoint in dev_to_mountpoints[dev]:
-                self.album_roots[Path(mountpoint) / specificPath] = id
+            if specific_path.startswith('/'):
+                specific_path = specific_path[1:]
+            for mountpoint in volume_uuid_to_mountpoints(identifier[15:]):
+                self.album_roots[Path(mountpoint) / specific_path] = id
+        logging.info('album_roots=%s' % self.album_roots)
 
         self.person_root_tag = self._detect_person_root_tag()
         self.internal_tags_id = self.find_tag(0, _INTERNAL_ROOT_TAG_NAME)

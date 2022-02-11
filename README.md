@@ -55,3 +55,16 @@ write some of the added metadata to EXIF tags in your photos.
 9. Open digiKam again and do some spot checks to make sure the migration worked as intended.
 10. If you want, you can now run digiKam's face detection to detect faces that Picasa hadn't detected or that were still
     in the "Unknown" folder in Picasa.
+
+## Known issues
+
+### KeyError from contact_to_tag
+
+Some `.picasa.ini` files aren't consistent in that neither that file nor the `.picasa.ini` files in parent directories
+contain an entry in the `[Contacts2]` section for a contact that is referenced in a `faces` tag. This can happen, for
+instance, if you copied directories around on your disk (including the respective `.picasa.ini` files) so that they lost
+the parent directory where the contact was declared.
+
+When this happens, you have two options: Manually add back the `[Contacts2]` entry (with some luck and/or with a good
+search function in your file explorer or with `grep`, you can find the missing ID in another directory) or remove the
+`faces` tag, thereby losing this (incomplete) metadata for that photo.

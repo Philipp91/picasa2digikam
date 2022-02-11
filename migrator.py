@@ -139,6 +139,9 @@ def migrate_face(image_id: int, filename: str, face_data: str, db: DigikamDb, co
     if face_data[1] == _UNKNOWN_FACE_ID:
         return
     contact_id = face_data[1]
+    if contact_id not in contact_to_tag:
+        logging.warning('Dropping face of unknown contact %s on %s' % (contact_id, filename))
+        return
     tag_id = contact_to_tag[contact_id]
     if tag_id is None:
         return  # Skip silently, as _map_contacts_to_tags() already warns about unmapped contacts.

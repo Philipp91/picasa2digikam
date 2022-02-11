@@ -50,7 +50,7 @@ class DigikamDb(object):
         self.album_roots = {}
         for row in self.conn.cursor().execute('SELECT id, type, identifier, specificPath FROM AlbumRoots WHERE status = 0'):
             id, type, identifier, specific_path = row
-            if type != 1:
+            if type != 1 and type != 2:  # 0=Undefined, 1=VolumeHardWired, 2=VolumeRemovable, 3=Network
                 logging.info('Skipping album %s at %s on %s because it is not a local disk' % (id, specific_path, identifier))
                 continue
             assert identifier.startswith('volumeid:?uuid=')

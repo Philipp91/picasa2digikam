@@ -69,7 +69,7 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
     # Migrate file by file.
     for filename in filter(_is_photo_file, files):
         if filename not in album_images:
-            raise ValueError('digiKam does not know %s/%s' % (input_dir, filename))
+            raise ValueError('digiKam does not know %s' % (input_dir / filename))
         image_id = album_images[filename]
         if ini.has_section(filename):
             used_ini_sections.add(filename)
@@ -77,7 +77,7 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
             try:
                 migrate_file(filename, image_id, ini_section, db, album_to_tag, contact_to_tag, dry_run=dry_run)
             except Exception as e:
-                raise RuntimeError('Error when processing %s/%s' % (input_dir, filename)) from e
+                raise RuntimeError('Error when processing %s' % (input_dir / filename)) from e
 
     # Make sure we actually read all the data from the ini file.
     unused_ini_sections = set(ini.sections()) - used_ini_sections

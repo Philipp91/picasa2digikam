@@ -78,7 +78,7 @@ class DigikamDb(object):
         """Returns ID of the Album that contains the given path."""
         for root_path, root_id in self.album_roots.items():
             try:
-                relative_path = str(path.relative_to(root_path))
+                relative_path = path.relative_to(root_path).as_posix()
                 if relative_path == '.':
                     relative_path = '/'  # Different ways of expressing the root.
                 else:

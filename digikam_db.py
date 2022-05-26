@@ -24,7 +24,7 @@ class DigikamDb(object):
     def __init__(self, file: Path):
         self.file = file
         self.conn = sqlite3.connect(file)
-
+        logging.info("file=",file)
         if os.name == 'nt':  # Windows
             import win32api  # From the pywin32 PIP package.
             serial_to_mountpoints: Dict[int, Set[str]] = {}
@@ -50,14 +50,21 @@ class DigikamDb(object):
         self.album_roots = {}
         for row in self.conn.cursor().execute('SELECT id, type, identifier, specificPath FROM AlbumRoots WHERE status = 0'):
             id, type, identifier, specific_path = row
-            if type != 1 and type != 2:  # 0=Undefined, 1=VolumeHardWired, 2=VolumeRemovable, 3=Network
+            if type != 1 and type != 2 and type != 3:  # 0=Undefined, 1=VolumeHardWired, 2=VolumeRemovable, 3=Network
                 logging.info('Skipping album %s at %s on %s because it is not a local disk' % (id, specific_path, identifier))
                 continue
-            assert identifier.startswith('volumeid:?uuid=')
-            if specific_path.startswith('/'):
-                specific_path = specific_path[1:]
-            for mountpoint in volume_uuid_to_mountpoints(identifier[15:]):
-                self.album_roots[Path(mountpoint) / specific_path] = id
+            logging.info('id=%s specific_path=%s identifier=%s' % (id, specific_path, identifier))
+            if identifier.startswith('volumeid:?uuid='):
+                if specific_path.startswith('/'):
+                    specific_path = specific_path[1:]
+                for mountpoint in volume_uuid_to_mountpoints(identifier[15:]):
+                    self.album_roots[Path(mountpoint) / specific_path] = id
+            elif identifier.startswith('volumeid:?path='):
+                self.album_roots[identifier[15:]] = id
+            else:
+                assert(identifier.startswith('networkshareid:?mountpath='))
+                self.album_roots[identifier[26:]] = id
+                
         logging.info('album_roots=%s' % self.album_roots)
 
         self.person_root_tag = self._detect_person_root_tag()

@@ -48,7 +48,7 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
     album_images = db.get_album_images(album_id)
 
     # Read ini file.
-    ini = configparser.ConfigParser()
+    ini = configparser.ConfigParser(strict=False)
     ini_file = input_dir / _PICASA_INI_FILE
     ini.read(ini_file, encoding='utf8')
     used_ini_sections = {'Picasa', 'Contacts', 'Contacts2'}

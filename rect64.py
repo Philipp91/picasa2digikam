@@ -1,4 +1,5 @@
 from typing import Tuple
+import logging
 
 
 def parse_rect64(data: str) -> Tuple[float, float, float, float]:  # left, top, right, bottom
@@ -6,7 +7,7 @@ def parse_rect64(data: str) -> Tuple[float, float, float, float]:  # left, top, 
     # Strip the rect64() from the outside.
     assert data.startswith("rect64(") and data.endswith(")"), input
     data = data[7:-1]
-    logging.info ("data=",data)
+    logging.info("data=%s" % data)
     assert len(data) >= 1
     data = data.zfill(16)  # Zeros in front, as Picasa abbreviates.
     # noinspection PyTypeChecker

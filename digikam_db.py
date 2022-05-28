@@ -64,7 +64,7 @@ class DigikamDb(object):
             elif identifier.startswith('networkshareid:?mountpath='):
                 self.album_roots[identifier[26:]] = id
             else:
-                raise ValueError('Unsupported ...' % identifier)
+                raise ValueError('Unsupported volume type %s' % identifier)
                 
         logging.info('album_roots=%s' % self.album_roots)
 

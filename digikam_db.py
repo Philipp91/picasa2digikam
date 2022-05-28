@@ -153,6 +153,16 @@ class DigikamDb(object):
         """Returns the ID of the person tag, or None if it does not exist."""
         return self._fetchcell('SELECT id FROM Tags WHERE pid = ? AND name = ?', (self.person_root_tag, person_name))
 
+    def find_person_name(self, id: int) -> Optional[str]:
+        """Returns the Name of the person name, or None if it does not exist."""
+        logging.info('SELECT name FROM Tags WHERE id = %s' % id)
+        name = self._fetchcell('SELECT name FROM Tags WHERE id = %s' % id)
+        logging.info('fetchcell OK')
+        logging.info('name=%s' % name)
+        if name == None:
+            name = ""
+        return name 
+
     def find_or_create_person_tag(self, person_name: str, dry_run: bool) -> int:
         """Returns the ID of a possibly newly created person tag with the given name."""
         tag_id = self.find_person_tag(person_name)
@@ -174,6 +184,11 @@ class DigikamDb(object):
         return self._fetchcell(
             'SELECT tagid FROM ImageTags WHERE imageid = ? AND tagid = ?',
             (image_id, tag_id)) is not None
+
+    def image_has_property(self, image_id: int, propname: str, rect: str) -> bool:
+        """Returns true if the given image already has the given property. Useful to find same rect."""
+        return self._fetchcell(
+            f"SELECT tagid FROM ImageTagProperties WHERE imageid = {image_id} AND property = '{propname}' AND value = '{rect}'") is not None
 
     def image_has_pick_tag(self, image_id: int) -> bool:
         """Returns true if the given image has any of the (four) "Pick" tags."""

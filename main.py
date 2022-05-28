@@ -17,7 +17,9 @@ def init_argparse() -> ArgumentParser:
     parser.add_argument('--photos_dir', required=True, type=Path,
                         help='Path to a root directory with photos and picasa.ini files to be imported')
     parser.add_argument('--digikam_db', required=True, type=Path,
-                        help='Path do digiKam\'s digikam4.db file.')
+                        help='Filename of digiKam\'s digikam4.db file.')
+    parser.add_argument('--contacts', required=False, type=Path,
+                        help='Optional filename of Picasa''s contacts.xml file')
     parser.add_argument('--dry_run', action='store_true')
     parser.add_argument('--verbose', '-v', action='count', default=0,
                         help='Log verbosity. Pass -vv to see debug output.')
@@ -47,7 +49,9 @@ def main() -> None:
 
     logging.info('Traversing input directories')
     with db.conn:  # Transaction
-        migrator.migrate_directories_under(input_root_dir=args.photos_dir, db=db, dry_run=args.dry_run)
+        migrator.migrate_directories_under(input_root_dir=args.photos_dir, db=db, 
+                                           dry_run=args.dry_run,
+                                           contacts_file=args.contacts)
     db.close()
 
     logging.info('Done')

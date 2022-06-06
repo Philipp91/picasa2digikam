@@ -1,4 +1,8 @@
-.idea
+.idea/workspace.xml
+.idea/dataSources.ids
+.idea/dataSources/
+.idea/vcs.xml
+
 tmp
 
 *.py[cod]

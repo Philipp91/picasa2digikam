@@ -20,78 +20,64 @@ _FACE_TAG_REGION_PROPERTY = 'tagRegion'
 
 ContactTags = Dict[str, Optional[int]]
 GlobalNames = Dict[str, str] # maps contact_id to name globally (but may be overridden per directory)
+ContactID2NamesSet = Dict[str, Set[str]]
 
 def _is_photo_file(file: str) -> bool:
     file = file.lower()
     return file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.raw') or file.endswith('.psd')
 
-def learn_contact_ids(input_dir: Path, ini_file_name: str, contact_id_2_nameset: Dict[str, set]):
-    """ Learn contact_id to name mapping from [Contacts2] sections of .ini file"""
+def learn_contact_ids(input_dir: Path, ini_file_name: str, contact_id_2_nameset: ContactID2NamesSet):
+    """Learn contact_id to name mapping from [Contacts2] sections of .ini file"""
     # Read ini file.
-    #logging.info("learn_contact_ids: input_dir=%s" % input_dir)
     ini = configparser.ConfigParser(strict=False)
-    ini_file = input_dir / Path(ini_file_name)
+    # Note: Python 3.10.4 on Windows needs the cast to Path below
+    ini_file = Path(input_dir) / ini_file_name
     ini.read(ini_file, encoding='utf8')
-    try:
-        for contact_id, value in ini['Contacts2'].items():
-            person_name = value.split(';')[0]
-            if not contact_id in contact_id_2_nameset:
-                logging.info(f"Learned name for {contact_id}='{person_name}' from {ini_file}")
-                contact_id_2_nameset[contact_id]=set([person_name])
-            else:
-                if person_name not in contact_id_2_nameset[contact_id]:
-                     logging.warning(f"Learned additional name for {contact_id}='{person_name}' from {ini_file}")
-                contact_id_2_nameset[contact_id].add(person_name)
-    except KeyError:
-        # likely no Contacts2 section
-        pass
-    except Exception as e:
-        logging.warning("Exception while learning contact ids")
-        logging.exception(str(e))
+    if 'Contacts2' in ini:
+        try:
+            for contact_id, value in ini['Contacts2'].items():
+                person_name = value.split(';')[0]
+                if contact_id not in contact_id_2_nameset:
+                    logging.info(f"Learned name for {contact_id}='{person_name}' from {ini_file}")
+                    contact_id_2_nameset[contact_id] = set([person_name])
+                else:
+                    if person_name not in contact_id_2_nameset[contact_id]:
+                        logging.warning(f"Learned additional name for {contact_id}='{person_name}' from {ini_file}")
+                    contact_id_2_nameset[contact_id].add(person_name)
+        except Exception as e:
+            logging.warning("Exception while learning contact ids")
+            logging.exception(str(e))
 
-def learn_old_contact_ids(input_dir: Path, ini_file_name: str, contact_id_2_nameset: Dict[str, set]):
-    """ Learn contact_id to name mapping from old [Contacts] sections of .ini file"""
-    # Prerequisite: Must have learned all that is possible from new [Contacts2] already
-
-    # Read ini file.
-    #logging.info("learn_old_contact_ids: input_dir=%s" % input_dir)
-    ini = configparser.ConfigParser(strict=False)
-    ini_file = input_dir /  Path(ini_file_name)
-    ini.read(ini_file, encoding='utf8')
-    try:
-        for contact_id, value in ini['Contacts'].items():
-            person_name = ".NoName-"+value.split(',')[1] # this is actually a hash
-            if not contact_id in contact_id_2_nameset:
-                logging.info(f"Learned name (old picasa contact ID) for {contact_id}='{person_name}' from {ini_file}")
-                contact_id_2_nameset[contact_id]=set([person_name])
-            # Note: the difference between learn_contact_ids and this version is we don't add the name to the set
-    except KeyError:
-        # likely no Contacts2 section
-        pass
-    except Exception as e:
-        logging.warning("Exception while learning contact ids")
-        logging.exception(str(e))
+    if 'Contacts' in ini:
+        try:
+            for contact_id, value in ini['Contacts'].items():
+                picasa_name_hash = value.split(',')[1]
+                person_name = f".NoName-{picasa_name_hash}"
+                if contact_id not in contact_id_2_nameset:
+                    logging.info(f"Learned old picasa name hash for {contact_id}='{person_name}' from {ini_file}")
+                    contact_id_2_nameset[contact_id] = set([person_name])
+                # Note: the difference between learn_Contacts2_and this version is we don't add the name to the set
+        except Exception as e:
+            logging.warning("Exception while learning contact ids")
+            logging.exception(str(e))
 
 def migrate_directories_under(input_root_dir: Path, 
                               db: DigikamDb, 
                               dry_run: bool,
-                              contacts_file: Path):
+                              contacts_file: Optional[Path],
+                              skip_same_rect: Optional[bool]):
     """Traverses directory tree to find directories to migrate."""
 
     # Build a contact_id to name(s) dictionary
     global_names: GlobalNames = {}
 
     if contacts_file is not None:
-        # contacts.xml seems more authoratative than *.ini files
+        # contacts.xml seems more authoritative than *.ini files
         # Use this whenever possible.
-        # Can be found at %LocalAppData%\Google\Picasa2\contacts\contacts.xml
-        # Also can be obtained from performing a backup operation from 
-        # within Picasa.  It will be in the backup location as 
-        # $Application Data\Google\Picasa2\contacts\backup.xml
-        logging.info(f'Reading contacts from {contacts_file}')
+        logging.debug(f'Reading contacts from {contacts_file}')
         tree = ET.parse(contacts_file)
         for contact in tree.getroot():
-            logging.info(f'{contact.attrib}')
+            logging.debug(f'{contact.attrib}')
             global_names[contact.attrib['id']] = contact.attrib['name']
 
     else:
@@ -99,57 +85,50 @@ def migrate_directories_under(input_root_dir: Path,
         # Sometimes names will be missing or conflicting if found 
         # different in multiple directories.  Conflicting names
         # will be merged by this script by concatenating them with " | " 
-        # separators in sorted order.  Missing names will have an
-        # auto generated value of  
-        contact_id_2_nameset: Dict[str, set] = {}
+        # separators in sorted order.  
+        contact_id_2_nameset: ContactID2NamesSet = {}
         for input_dir, subdirs, files in os.walk(input_root_dir):
             for ini_file in (_PICASA_INI_FILE,_OLD_PICASA_INI_FILE):
                 learn_contact_ids(input_dir,ini_file,contact_id_2_nameset)
-        for input_dir, subdirs, files in os.walk(input_root_dir):
-            for ini_file in (_PICASA_INI_FILE,_OLD_PICASA_INI_FILE):
-                learn_old_contact_ids(input_dir,ini_file,contact_id_2_nameset)
 
-        logging.info("contact_id_2_nameset")
-        logging.info("------------------------------------------------------------")
-        try:
-            for contact_id, names in contact_id_2_nameset.items():
-                person_name = ""
-                for i, item in enumerate(sorted(names)):
-                    person_name += item
-                    if i < (len(names)-1):
-                        # ambiguous contact_id will have a concatenated list of names
-                        person_name += "|"
-                logging.info(f"'{contact_id}': '{person_name}'")
-                # Create or add contacts
-                global_names[contact_id] = person_name
-        except Exception as e:
-            logging.warning(f"Exception: {e}")
-        logging.info("------------------------------------------------------------")
+        global_names = {k: "|".join(sorted(v)) for k,v in contact_id_2_nameset.items()}
+
+        logging.debug(f"global_names={global_names}")
 
     contact_tags_per_dir: Dict[Path, ContactTags] = {}
 
-    for ini_file in (_PICASA_INI_FILE,_OLD_PICASA_INI_FILE):
-        for input_dir, subdirs, files in os.walk(input_root_dir):
-            dir = Path(input_dir)
-            logging.info(f"Processing {Path(dir/ini_file)}")
-            try:
-                if ini_file in files:
-                    contact_tags_per_dir[dir] = migrate_directory(dir, files, db, 
-                                                    contact_tags_per_dir, global_names,
-                                                    dry_run=dry_run, ini_file_name=ini_file)
-                elif any([_is_photo_file(file) for file in files]):
-                    logging.warning(f'Found photos but no {ini_file} in {dir}')
-            except Exception as e:
-                # Seems to happen with very old "Originals" directories
-                logging.warning(f'Exception: {e}')
-                logging.warning(traceback.format_exc())
-    #logging.info("Final contact_tags_per_dir=%s" % contact_tags_per_dir)
+    for input_dir, subdirs, files in os.walk(input_root_dir):
+        dir = Path(input_dir)
+        if _PICASA_INI_FILE in files:
+            ini_file = _PICASA_INI_FILE
+        elif _OLD_PICASA_INI_FILE in files:
+            ini_file = _OLD_PICASA_INI_FILE
+        else:
+            if any([_is_photo_file(file) for file in files]):
+                logging.warning(f'Found photos but no .ini in {dir}')
+            else:
+                logging.warning(f"No photos and no .ini file in {dir}")
+            continue
+        logging.debug(f"Processing {Path(dir/ini_file)}")
+        try:
+            contact_tags_per_dir[dir] = migrate_directory(dir, files, db, 
+                                        contact_tags_per_dir, global_names,
+                                        dry_run=dry_run, ini_file_name=ini_file,
+                                        contacts_file=contacts_file,
+                                        skip_same_rect=skip_same_rect)
+        except Exception as e:
+            # Seems to happen with very old "Originals" directories. digiKam Windows version
+            # will skip these directories, leading to this exception
+            logging.warning(f'Exception: {e}')
+            logging.warning(traceback.format_exc())
 
 def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
                       contact_tags_per_dir: Dict[Path, ContactTags],
                       global_names: GlobalNames,
                       dry_run: bool,
-                      ini_file_name: str) -> ContactTags:
+                      ini_file_name: str,
+                      contacts_file: Optional[str],
+                      skip_same_rect: Optional[bool]) -> ContactTags:
     """Migrates metadata of all photo files in the given directory."""
     logging.info('===========================================================================================')
     if input_dir.name == '.picasaoriginals':
@@ -171,7 +150,7 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
     album_to_tag = _map_albums_to_tags(ini, db, used_ini_sections, dry_run=dry_run)
 
     self_contact_to_tag = _map_contacts_to_tags(ini['Contacts2'], db, dry_run=dry_run) if 'Contacts2' in ini else {}
-    logging.info('self_contact_to_tag=%s' % self_contact_to_tag)
+    logging.debug('self_contact_to_tag=%s' % self_contact_to_tag)
     
     # Merge contacts declared in parent ini files.
     contact_to_tag = self_contact_to_tag.copy()
@@ -182,18 +161,17 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
             else:
                 contact_to_tag[contact_id] = tag_id
 
-    #logging.info("contact_to_tag=%s" % contact_to_tag)
-
     # Migrate file by file.
     for filename in filter(_is_photo_file, files):
         if filename not in album_images:
-            raise ValueError('digiKam does not know %s' % (input_dir / filename))
+            raise ValueError(f'digiKam does not know {(input_dir / filename)}')
         image_id = album_images[filename]
         if ini.has_section(filename):
             used_ini_sections.add(filename)
             ini_section = ini[filename]
             try:
-                migrate_file(filename, image_id, ini_section, db, album_to_tag, contact_to_tag, global_names, dry_run=dry_run)
+                migrate_file(filename, image_id, ini_section, db, album_to_tag, contact_to_tag, global_names, 
+                             skip_same_rect=skip_same_rect, contacts_file=contacts_file, dry_run=dry_run)
             except Exception as e:
                 logging.error(f"Exception: {e}")
                 logging.error(traceback.format_exc())
@@ -216,7 +194,9 @@ def migrate_file(filename: str, image_id: int, ini_section: configparser.Section
                  album_to_tag: Dict[str, int],     # Picasa ID -> digiKam Tag ID
                  contact_to_tag: ContactTags,      # Picasa contact ID -> digiKam Tag ID (local to this directory branch -- use this if possible, but might not be complete)
                  global_names: GlobalNames,        # Picasa contact ID -> name (global to whole picasa source tree -- might be ambiguous)
-                 dry_run: bool):
+                 dry_run: bool,
+                 contacts_file: Optional[str],
+                 skip_same_rect: Optional[bool]):
     # Note: Picasa's rotate=rotate(N) means 0=normal, 1=90º, 2=180º, 3=270º clock-wise. This does *not* influence the
     # face coordinates, which are wrt. the image file stored on disk.
     used_ini_keys = {'backuphash', 'rotate'}
@@ -247,7 +227,9 @@ def migrate_file(filename: str, image_id: int, ini_section: configparser.Section
             logging.warning('Skipping faces on %s because of PSD format' % filename)
         else:
             for face_data in faces.split(';'):
-                migrate_face(image_id, filename, face_data, db, contact_to_tag, global_names, dry_run=dry_run)
+                migrate_face(image_id, filename, face_data, db, contact_to_tag, global_names, 
+                             contacts_file=contacts_file, skip_same_rect=skip_same_rect, 
+                             dry_run=dry_run)
 
     unused_ini_keys = set(ini_section.keys()) - used_ini_keys
     if unused_ini_keys:
@@ -260,25 +242,43 @@ def migrate_face(image_id: int,
                  db: DigikamDb, 
                  contact_to_tag: ContactTags, 
                  global_names: GlobalNames,
-                 dry_run: bool):
+                 dry_run: bool,
+                 contacts_file: Optional[str],
+                 skip_same_rect: Optional[bool]):
     face_data = face_data.split(',')
     assert len(face_data) == 2
     if face_data[1] == _UNKNOWN_FACE_ID:
         return
     contact_id = face_data[1]
-    if contact_id not in contact_to_tag:
-        if contact_id not in global_names:
-            # This can happen often if not using contacts.xml
-            # Add to global
-            person_name = ".NoName-"+contact_id+"-from-rect64"
+
+    tag_id = None
+
+    if contacts_file == None:
+        # Names from local directory's .ini files have higher priority
+        if contact_id in contact_to_tag:
+            tag_id = contact_to_tag[contact_id]
+        else:
+            if contact_id not in global_names:
+                # This can happen often if not using contacts.xml
+                # Add to global
+                person_name = f".NoName-{contact_id}-from-rect64"
+                logging.info(f'Learned {person_name} from a rect64 tag belonging to {filename}')
+                global_names[contact_id] = person_name
+            tag_id = db.find_or_create_person_tag(global_names[contact_id], dry_run=dry_run)
+            contact_to_tag[contact_id] = tag_id;
+    else:
+        # global_names (learned from contacts.xml) has higher priority
+        if (contact_id in global_names):
+            tag_id = db.find_or_create_person_tag(global_names[contact_id], dry_run=dry_run)
+            contact_to_tag[contact_id] = tag_id;
+        elif (contact_id in contact_to_tag):
+            tag_id = contact_to_tag[contact_id]
+        else:
+            person_name = f".NoName-{contact_id}-from-rect64"
             logging.info(f'Learned {person_name} from a rect64 tag belonging to {filename}')
             global_names[contact_id] = person_name
-        tag_id = db.find_or_create_person_tag(global_names[contact_id], dry_run=dry_run)
-    else:
-        tag_id = contact_to_tag[contact_id]
-
-    if tag_id is None:
-        return  # Skip silently, as _map_contacts_to_tags() already warns about unmapped contacts.
+            tag_id = db.find_or_create_person_tag(person_name, dry_run=dry_run)
+            contact_to_tag[contact_id] = tag_id;
 
     if db.image_has_tag(image_id, tag_id):
         logging.warning(
@@ -293,14 +293,17 @@ def migrate_face(image_id: int,
     # Not sure if skipping an existing rect is an improvement or not... probably not since DigiKam creates rects at scan time
     # and if the same rect is found in Picasa, it won't migrate.
     # Should NOT skip if it is the first attempt at migration. however if you don't skip and identify the rect as someone else
-    # and then run this script again, you end up with another rect mapped to Picasa's name -- it's a connundrum..
-    skip_same_rect=False 
-    if skip_same_rect and db.image_has_property(image_id, _FACE_TAG_REGION_PROPERTY, digikam_rect):
-        logging.warning(
-            f'Not applying face {tag_id} ({contact_id}) to {image_id} ({filename}) because it already has that face rectangle')
-        return
+    # and then run this script again, you end up with another rect mapped to Picasa's name -- it's a conundrum..
+    if db.image_has_property(image_id, _FACE_TAG_REGION_PROPERTY, digikam_rect):
+        if skip_same_rect == None:
+            logging.error(f"digiKam already has face rectangle {digikam_rect} defined.  Please specify what to do by running with argument --skip_same_rect or --no-skip_same_rect")
+            assert(skip_same_rect is not None)
+        elif skip_same_rect:
+            logging.warning(
+                f'Not applying face {tag_id} ({contact_id}) to {image_id} ({filename}) because it already has that face rectangle')
+            return
 
-    logging.debug('Adding face %s (%s) at %s to %s (%s)' % (tag_id, contact_id, digikam_rect, image_id, filename))
+    logging.debug(f'Adding face {tag_id} ({contact_id}) at {digikam_rect} to {image_id} ({filename})')
     if dry_run:
         return
 
@@ -339,5 +342,5 @@ def _map_contacts_to_tags(
     for contact_id, value in contacts_section.items():
         person_name = value.split(';')[0]
         result[contact_id] = db.find_or_create_person_tag(person_name, dry_run=dry_run)
-        logging.info("person_name=%s contact_id=%s tag=%s" % (person_name, contact_id, result[contact_id]))
+        logging.debug("person_name=%s contact_id=%s tag=%s" % (person_name, contact_id, result[contact_id]))
     return result

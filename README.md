@@ -4,14 +4,21 @@ A script to migrate Picasa metadata from its `.picasa.ini` files and/or `contact
 [digiKam](https://www.digikam.org/) database.
 
 It does not require Picasa to be installed and therefore does not require Windows. It does not write into the original 
-Picasa file system, so the original files should remain untouched.  However, it does write to the digikam4.db file, so 
+Picasa file system, so the original files should remain untouched.  However, it does write to the `digikam4.db` file, so 
 make sure you back that up (although this script also creates backups too).  
 
-'contacts.xml' usually contains more accurate name information, so locate and provide the file path to it if possible.  
+`contacts.xml` usually contains more accurate name information, so locate and provide the file path to it if possible.  
 
-In the rare instance where a face was identified in the .ini file without a corresponding name in either .ini or 
-contacts.xml, this script generates a name using the hashed contact ID in the form of
-`.NoName-[hashed-contact-id]-from-rect64`. E.g. `.NoName-da61ef7edfd692c5-from-rect64`
+In large old collections, there may be some inconsistencies between .ini files due to crashes in Picasa, manual moving, 
+etc.  A lot of inconsistencies can be resolved by using the `contacts.xml` file.  If no `contacts.xml` is available, this 
+script tries to workaround some of these issues.  For example:
+
+* In the rare instance where a face was identified in the .ini file without a corresponding name in either .ini or 
+  `contacts.xml`, this script generates a name using the hashed contact ID in the form of
+  `.NoName-[hashed-contact-id]-from-rect64`. E.g. `.NoName-da61ef7edfd692c5-from-rect64`
+
+* In another rare instance where a face was identified multiple times in .ini files, this script generates a guessed name
+  using a concatenation of all the names found separated by `|`.  E.g. `Marsha|Marshia|Marcia`
 
 
 
@@ -29,9 +36,9 @@ contacts.xml, this script generates a name using the hashed contact ID in the fo
       touches every single file on disk, which might not be desirable) as an alternative way of migrating your face
       tags.
 
-## Where to find contacts.xml?
+## Where to find `contacts.xml`?
 
-* Can be found at %LocalAppData%\Google\Picasa2\contacts\contacts.xml
+* Can be found at `%LocalAppData%\Google\Picasa2\contacts\contacts.xml`
 * Also can be obtained from performing a backup operation from within Picasa.  It will be in the backup location as
   `$Application Data\Google\Picasa2\contacts\backup.xml`
 
@@ -78,7 +85,7 @@ metadata sync settings in digiKam, digiKam itself may (or not) write some of the
 9. Open digiKam again and do some spot checks to make sure the migration worked as intended.  Note: digiKam may have 
     already detected faces during the initial library scan -- in this case you may end up with overlapping face 
     rectangles.  If this migration started from a "clean" digiKam, you can just move all the "Unknown" faces to 
-    "Ignore", otherise it may take some time to manually clean up from within digiKam (or by editing digikam4.db using
-    an SQL client).  
+    "Ignore", otherwise it may take some time to manually clean up from within digiKam (or by editing digikam4.db using
+    an SQL client).
 10. If you want, you can now run digiKam's face detection to detect faces that Picasa hadn't detected or that were still
-    in the "Unknown" folder in Picasa.  
+    in the "Unknown" folder in Picasa.

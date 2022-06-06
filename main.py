@@ -5,6 +5,7 @@ import logging
 import shutil
 import sys
 import time
+import argparse
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -17,12 +18,14 @@ def init_argparse() -> ArgumentParser:
     parser.add_argument('--photos_dir', required=True, type=Path,
                         help='Path to a root directory with photos and picasa.ini files to be imported')
     parser.add_argument('--digikam_db', required=True, type=Path,
-                        help='Filename of digiKam\'s digikam4.db file.')
+                        help='Full path to digiKam\'s digikam4.db file.')
     parser.add_argument('--contacts', required=False, type=Path,
-                        help='Optional filename of Picasa''s contacts.xml file')
+                        help='Optional full path to Picasa''s contacts.xml file')
     parser.add_argument('--dry_run', action='store_true')
     parser.add_argument('--verbose', '-v', action='count', default=0,
                         help='Log verbosity. Pass -vv to see debug output.')
+    parser.add_argument('--skip_same_rect', action=argparse.BooleanOptionalAction, 
+                        help="Skip or not to skip adding face to digiKam if it already has that rectangle defined")
     return parser
 
 
@@ -45,13 +48,14 @@ def main() -> None:
 
     logging.info('Inspecting existing digiKam database')
     db = digikam_db.DigikamDb(args.digikam_db)
-    logging.info(db)
+    logging.debug(db)
 
     logging.info('Traversing input directories')
     with db.conn:  # Transaction
         migrator.migrate_directories_under(input_root_dir=args.photos_dir, db=db, 
                                            dry_run=args.dry_run,
-                                           contacts_file=args.contacts)
+                                           contacts_file=args.contacts,
+                                           skip_same_rect=args.skip_same_rect)
     db.close()
 
     logging.info('Done')

@@ -3,23 +3,9 @@
 A script to migrate Picasa metadata from its `.picasa.ini` files and/or `contacts.xml` file to the 
 [digiKam](https://www.digikam.org/) database.
 
-It does not require Picasa to be installed and therefore does not require Windows. It does not write into the original 
-Picasa file system, so the original files should remain untouched.  However, it does write to the `digikam4.db` file, so 
-make sure you back that up (although this script also creates backups too).  
+It does not require Picasa to be installed and therefore does not require Windows. 
 
-`contacts.xml` usually contains more accurate name information, so locate and provide the file path to it if possible.  
-
-In large old collections, there may be some inconsistencies between .ini files due to crashes in Picasa, manual moving, 
-etc.  A lot of inconsistencies can be resolved by using the `contacts.xml` file.  If no `contacts.xml` is available, this 
-script tries to workaround some of these issues.  For example:
-
-* In the rare instance where a face was identified in the .ini file without a corresponding name in either .ini or 
-  `contacts.xml`, this script generates a name using the hashed contact ID in the form of
-  `.NoName-[hashed-contact-id]-from-rect64`. E.g. `.NoName-da61ef7edfd692c5-from-rect64`
-
-* In another rare instance where a face was identified multiple times in .ini files, this script generates a guessed name
-  using a concatenation of all the names found separated by `|`.  E.g. `Marsha|Marshia|Marcia`
-
+It does not write into the original Picasa file system, so the original files should remain untouched.  
 
 
 ## Supported metadata
@@ -71,7 +57,7 @@ metadata sync settings in digiKam, digiKam itself may (or not) write some of the
    ```bash
    ./main.py --dry_run \
        --photos_dir='C:\Users\user\...' \
-       --digikam_db='C:\Users\user\...\digikam4.db'
+       --digikam_db='C:\Users\user\...\digikam4.db' \
        --contacts='%LocalAppData%\Google\Picasa2\contacts\contacts.xml'
    ```
    In this command, `--photos_dir` must point to the same directory you configured in step 3 above, or a sub-directory
@@ -89,3 +75,20 @@ metadata sync settings in digiKam, digiKam itself may (or not) write some of the
     an SQL client).
 10. If you want, you can now run digiKam's face detection to detect faces that Picasa hadn't detected or that were still
     in the "Unknown" folder in Picasa.
+
+## Operation Details
+
+The script writes to the `digikam4.db` file and creates a backup.  However it is also recommended you make a backup too.  
+
+`contacts.xml` usually contains more accurate name information, so locate and provide the file path to it if possible.  
+
+In large old collections, there may be some inconsistencies between .ini files due to crashes in Picasa, manual moving, 
+etc.  A lot of inconsistencies can be resolved by using the `contacts.xml` file.  If no `contacts.xml` is available, this 
+script tries to work around some of these issues.  For example:
+
+* In the rare instance where a face was identified in the .ini file without a corresponding name in either .ini or 
+  `contacts.xml`, this script generates a name using the hashed contact ID in the form of
+  `.NoName-[hashed-contact-id]-from-rect64`. E.g. `.NoName-da61ef7edfd692c5-from-rect64`
+
+* In another rare instance where a face was identified multiple times in .ini files, this script generates a guessed name
+  using a concatenation of all the sorted names found separated by `|`.  E.g. `Marcia|Marsha|Marshia|`

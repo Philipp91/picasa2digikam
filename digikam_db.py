@@ -82,7 +82,7 @@ class DigikamDb(object):
     def close(self):
         self.conn.close()
 
-    def find_album_by_dir(self, path: Path) -> int:
+    def find_album_by_dir(self, path: Path) -> Optional[int]:
         """Returns ID of the Album that contains the given path."""
         for root_path, root_id in self.album_roots.items():
             try:
@@ -96,7 +96,8 @@ class DigikamDb(object):
             album_id = self._fetchcell('SELECT id FROM Albums WHERE albumRoot = ? AND relativePath = ?',
                                        (root_id, relative_path))
             if album_id is None:
-                raise ValueError('No digiKam Album found for %s (relative path %s) under root %s' % (path, relative_path, root_id))
+                logging.warning('No digiKam Album found for %s (relative path %s) under root %s' % (path, relative_path, root_id))
+                return None
             return album_id
         raise ValueError('No digiKam AlbumRoot found for %s, only have %s' % (path, self.album_roots))
 

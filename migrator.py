@@ -104,17 +104,11 @@ def migrate_directories_under(input_root_dir: Path,
                 logging.warning(f"No photos and no .ini file in {dir}")
             continue
         logging.debug(f"Processing {Path(dir/ini_file)}")
-        try:
-            contact_tags_per_dir[dir] = migrate_directory(dir, files, db,
-                	contact_tags_per_dir, global_names,
-                	dry_run=dry_run, ini_file_name=ini_file,
-                	prioritize_global_names=prioritize_global_names,
-                	skip_same_rect=skip_same_rect)
-        except Exception as e:
-            # Seems to happen with very old "Originals" directories. digiKam Windows version
-            # will skip these directories, leading to this exception
-            logging.warning(f'Exception: {e}')
-            logging.warning(traceback.format_exc())
+        contact_tags_per_dir[dir] = migrate_directory(dir, files, db,
+            	contact_tags_per_dir, global_names,
+            	dry_run=dry_run, ini_file_name=ini_file,
+            	prioritize_global_names=prioritize_global_names,
+            	skip_same_rect=skip_same_rect)
 
 def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
                       contact_tags_per_dir: Dict[Path, ContactTags],

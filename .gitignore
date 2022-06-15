@@ -3,6 +3,8 @@
 .idea/dataSources/
 .idea/vcs.xml
 
+tmp
+
 *.py[cod]
 
 test.sh

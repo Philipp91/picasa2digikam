@@ -23,7 +23,7 @@ class DigikamDb(object):
 
     def __init__(self, file: Path):
         self.file = file
-        logging.info("file=%s" % file)
+        logging.debug("file=%s" % file)
         self.conn = sqlite3.connect(file)
         if os.name == 'nt':  # Windows
             import win32api  # From the pywin32 PIP package.
@@ -33,7 +33,7 @@ class DigikamDb(object):
                 if serial < 0:
                     serial = serial + (1 << 32)  # Convert int32 to uint32
                 serial_to_mountpoints.setdefault(serial, set()).add(sdiskpart.mountpoint)
-            logging.info('serial_to_mountpoints=%s' % serial_to_mountpoints)
+            logging.debug('serial_to_mountpoints=%s' % serial_to_mountpoints)
             def volume_uuid_to_mountpoints(uuid: str) -> Set[str]:
                 # On Windows, digiKam uses the serial number in hex format as the UUID:
                 # https://invent.kde.org/frameworks/solid/-/blob/006e013d18c20cf2c98cf1776d768476978a1a63/src/solid/devices/backends/win/winstoragevolume.cpp#L57
@@ -42,7 +42,7 @@ class DigikamDb(object):
             dev_to_mountpoints: Dict[str, Set[str]] = {}
             for sdiskpart in psutil.disk_partitions():
                 dev_to_mountpoints.setdefault(sdiskpart.device, set()).add(sdiskpart.mountpoint)
-            logging.info('dev_to_mountpoints=%s' % dev_to_mountpoints)
+            logging.debug('dev_to_mountpoints=%s' % dev_to_mountpoints)
             def volume_uuid_to_mountpoints(uuid: str) -> Set[str]:
                 # On Unix, we use a trick with realpath and /dev/disk/by-uuid' to find the main mount point.
                 return dev_to_mountpoints[os.path.realpath(Path('/dev/disk/by-uuid') / uuid.upper())]
@@ -51,9 +51,9 @@ class DigikamDb(object):
         for row in self.conn.cursor().execute('SELECT id, type, identifier, specificPath FROM AlbumRoots WHERE status = 0'):
             id, type, identifier, specific_path = row
             if type != 1 and type != 2 and type != 3:  # 0=Undefined, 1=VolumeHardWired, 2=VolumeRemovable, 3=Network
-                logging.info('Skipping album %s at %s on %s because it is not a local disk' % (id, specific_path, identifier))
+                logging.info('Skipping album %s at %s on %s because it is not recognized disk type' % (id, specific_path, identifier))
                 continue
-            logging.info('id=%s specific_path=%s identifier=%s' % (id, specific_path, identifier))
+            logging.debug('id=%s specific_path=%s identifier=%s' % (id, specific_path, identifier))
             if identifier.startswith('volumeid:?uuid='):
                 if specific_path.startswith('/'):
                     specific_path = specific_path[1:]
@@ -66,7 +66,7 @@ class DigikamDb(object):
             else:
                 raise ValueError('Unsupported volume type %s' % identifier)
                 
-        logging.info('album_roots=%s' % self.album_roots)
+        logging.debug('album_roots=%s' % self.album_roots)
 
         self.person_root_tag = self._detect_person_root_tag()
         self.internal_tags_id = self.find_tag(0, _INTERNAL_ROOT_TAG_NAME)
@@ -82,7 +82,7 @@ class DigikamDb(object):
     def close(self):
         self.conn.close()
 
-    def find_album_by_dir(self, path: Path) -> int:
+    def find_album_by_dir(self, path: Path) -> Optional[int]:
         """Returns ID of the Album that contains the given path."""
         for root_path, root_id in self.album_roots.items():
             try:
@@ -96,7 +96,7 @@ class DigikamDb(object):
             album_id = self._fetchcell('SELECT id FROM Albums WHERE albumRoot = ? AND relativePath = ?',
                                        (root_id, relative_path))
             if album_id is None:
-                raise ValueError('No digiKam Album found for %s (relative path %s) under root %s' % (path, relative_path, root_id))
+                logging.warning('No digiKam Album found for %s (relative path %s) under root %s' % (path, relative_path, root_id))
             return album_id
         raise ValueError('No digiKam AlbumRoot found for %s, only have %s' % (path, self.album_roots))
 
@@ -174,6 +174,11 @@ class DigikamDb(object):
         return self._fetchcell(
             'SELECT tagid FROM ImageTags WHERE imageid = ? AND tagid = ?',
             (image_id, tag_id)) is not None
+
+    def image_has_property(self, image_id: int, propname: str, value: str) -> bool:
+        """Returns true if the given image already has the given property."""
+        return self._fetchcell(
+            f"SELECT tagid FROM ImageTagProperties WHERE imageid = {image_id} AND property = '{propname}' AND value = '{value}'") is not None
 
     def image_has_pick_tag(self, image_id: int) -> bool:
         """Returns true if the given image has any of the (four) "Pick" tags."""

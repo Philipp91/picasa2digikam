@@ -1,8 +1,12 @@
 # picasa2digikam
 
-A script to migrate Picasa metadata from its `.picasa.ini` files (does not require Picasa to be installed and therefore
-does not require Windows) to the [digiKam](https://www.digikam.org/) database (does not write into the file system, so
-the original files should remain untouched).
+A script to migrate Picasa metadata from its `.picasa.ini` files and/or `contacts.xml` file to the 
+[digiKam](https://www.digikam.org/) database.
+
+It does not require Picasa to be installed and therefore does not require Windows. 
+
+It does not write into the original Picasa file system, so the original files should remain untouched.  
+
 
 ## Supported metadata
 
@@ -18,17 +22,25 @@ the original files should remain untouched).
       touches every single file on disk, which might not be desirable) as an alternative way of migrating your face
       tags.
 
+## Where to find `contacts.xml`?
+
+* Can be found at `%LocalAppData%\Google\Picasa2\contacts\contacts.xml`
+* Also can be obtained from performing a backup operation from within Picasa.  It will be in the backup location as
+  `$Application Data\Google\Picasa2\contacts\backup.xml`
+
 ## Installation
 
 Clone the repository and `cd` into it. Install `pip3 install psutil`. On Windows, also `pip3 install pywin32`.
 
 ## Suggested usage
 
-This script writes into the digiKam database. If you already have photos in digiKam, you should *at least* make a
-backup. Furthermore, this script has been tested only when writing into an "empty" digiKam instance, so you might get
-better results by starting with an empty instance too. You may also want to make a backup of the photo directories,
-though the script doesn't write there. Depending on your metadata sync settings in digiKam, digiKam itself may (or not)
-write some of the added metadata to EXIF tags in your photos.
+This script writes into the digiKam database. If you already have photos in digiKam, you should *at least* make a backup. 
+Furthermore, testing shows this script works best when writing into an "empty" digiKam instance.  If you already have 
+faces identified prior to running this script, you might get duplicate entries if the digiKam name does not match the name 
+this script found.
+
+You may also want to make a backup of the photo directories, though the script doesn't write there. Depending on your 
+metadata sync settings in digiKam, digiKam itself may (or not) write some of the added metadata to EXIF tags in your photos.
 
 0. Optional: As this is your last chance to make edits in Picasa that will also be reflected in digiKam, you may want to
    do some cleanups there:
@@ -45,13 +57,38 @@ write some of the added metadata to EXIF tags in your photos.
    ```bash
    ./main.py --dry_run \
        --photos_dir='C:\Users\user\...' \
-       --digikam_db='C:\Users\user\...\digikam4.db'
+       --digikam_db='C:\Users\user\...\digikam4.db' \
+       --contacts='%LocalAppData%\Google\Picasa2\contacts\contacts.xml'
    ```
    In this command, `--photos_dir` must point to the same directory you configured in step 3 above, or a sub-directory
-   thereof, and `--digikam_db` must point to the `digikam4.db` file under the directory configured in step 2 above.
-6. Make sure there were no errors, and take a look at relevant-looking warnings. Debug if necessary.
+   thereof, and `--digikam_db` must point to the `digikam4.db` file under the directory configured in step 2 above.  
+   `--contacts` is optional but highly recommended.
+6. Make sure there were no errors, and take a look at relevant-looking warnings. Debug if necessary.  Sometimes the .ini 
+   file is corrupted (probably due to Picasa crashing in the middle of updating an .ini file) -- you will need to 
+   edit the .ini file in such cases)
 7. Close digiKam (to prevent concurrent access to the database).
 8. Execute the same command without `--dry_run` to carry out the migration.
-9. Open digiKam again and do some spot checks to make sure the migration worked as intended.
+9. Open digiKam again and do some spot checks to make sure the migration worked as intended.  Note: digiKam may have 
+    already detected faces during the initial library scan -- in this case you may end up with overlapping face 
+    rectangles.  If this migration started from a "clean" digiKam, you can just move all the "Unknown" faces to 
+    "Ignore", otherwise it may take some time to manually clean up from within digiKam (or by editing digikam4.db using
+    an SQL client).
 10. If you want, you can now run digiKam's face detection to detect faces that Picasa hadn't detected or that were still
     in the "Unknown" folder in Picasa.
+
+## Operation Details
+
+The script writes to the `digikam4.db` file and creates a backup.  However it is also recommended you make a backup too.  
+
+`contacts.xml` usually contains more accurate name information, so locate and provide the file path to it if possible.  
+
+In large old collections, there may be some inconsistencies between .ini files due to crashes in Picasa, manual moving, 
+etc.  A lot of inconsistencies can be resolved by using the `contacts.xml` file.  If no `contacts.xml` is available, this 
+script tries to work around some of these issues.  For example:
+
+* In the rare instance where a face was identified in the .ini file without a corresponding name in either .ini or 
+  `contacts.xml`, this script generates a name using the hashed contact ID in the form of
+  `.NoName-[hashed-contact-id]-from-rect64`. E.g. `.NoName-da61ef7edfd692c5-from-rect64`
+
+* In another rare instance where a face was identified multiple times in .ini files, this script generates a guessed name
+  using a concatenation of all the sorted names found separated by `|`.  E.g. `Marcia|Marsha|Marshia|`

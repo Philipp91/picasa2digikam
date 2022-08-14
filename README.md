@@ -53,12 +53,19 @@ metadata sync settings in digiKam, digiKam itself may (or not) write some of the
    have multiple, you must repeat this and the following steps for each root directory separately.
 4. Wait for the "Find new items" job to complete (see progress bar at the bottom, wait until it says "No active process"
    there). You should now see all your photos in digiKam already, but without their stars and tags.
-5. Execute a dry run:
+5. Execute a dry run. Under Linux, it might look sth like this:
    ```bash
    ./main.py --dry_run \
-       --photos_dir='C:\Users\user\...' \
-       --digikam_db='C:\Users\user\...\digikam4.db' \
-       --contacts='%LocalAppData%\Google\Picasa2\contacts\contacts.xml'
+       --photos_dir='/home/user/Pictures' \
+       --digikam_db='/home/user/snap/digikam/common/digikam4.db' \
+       --contacts='/mnt/WinDrive/Users/user/AppData/Local/Google/Picasa2/contacts/contacts.xml'
+   ```
+   And when using the Windows Command Prompt (cmd), it might look like this:
+   ```cmd
+   python main.py --dry_run ^
+       --photos_dir="C:\Users\user\Pictures" ^
+       --digikam_db="C:\Users\user\Pictures\digikam4.db" ^
+       --contacts="%LocalAppData%\Google\Picasa2\contacts\contacts.xml"
    ```
    In this command, `--photos_dir` must point to the same directory you configured in step 3 above, or a sub-directory
    thereof, and `--digikam_db` must point to the `digikam4.db` file under the directory configured in step 2 above.  

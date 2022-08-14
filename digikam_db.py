@@ -27,7 +27,7 @@ class DigikamDb(object):
         try:
             self.conn = sqlite3.connect(file)
         except sqlite3.OperationalError as err:
-            raise RuntimeError(f'Failed to open SQLite database from {file}.') from err
+            raise RuntimeError(f'Failed to open SQLite database from "{file}".') from err
 
         if os.name == 'nt':  # Windows
             import win32api  # From the pywin32 PIP package.

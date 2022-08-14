@@ -134,7 +134,10 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
     # Read ini file.
     ini = configparser.ConfigParser(strict=False)
     ini_file = input_dir / ini_file_name
-    ini.read(ini_file, encoding='utf8')
+    try:
+        ini.read(ini_file, encoding='utf8')
+    except Exception as err:
+        raise RuntimeError(f'Failed to read ini file "{ini_file}".') from err
     used_ini_sections = {'Picasa', 'Contacts', 'Contacts2'}
 
     # Create or look up digiKam tags for each Picasa album and contact/person.

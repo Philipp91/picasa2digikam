@@ -33,7 +33,11 @@ class DigikamDb(object):
             import win32api  # From the pywin32 PIP package.
             serial_to_mountpoints: Dict[int, Set[str]] = {}
             for sdiskpart in psutil.disk_partitions():
-                _, serial, _, _, _ = win32api.GetVolumeInformation(sdiskpart.mountpoint)
+                try:
+                    _, serial, _, _, _ = win32api.GetVolumeInformation(sdiskpart.mountpoint)
+                except Exception as err:
+                    logging.warning('Cannot determine address of disk %s mounted at %s, so it will be unavailable' % (sdiskpart.device, sdiskpart.mountpoint))
+                    continue
                 if serial < 0:
                     serial = serial + (1 << 32)  # Convert int32 to uint32
                 serial_to_mountpoints.setdefault(serial, set()).add(sdiskpart.mountpoint)

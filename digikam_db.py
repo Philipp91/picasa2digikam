@@ -24,7 +24,11 @@ class DigikamDb(object):
     def __init__(self, file: Path):
         self.file = file
         logging.debug("file=%s" % file)
-        self.conn = sqlite3.connect(file)
+        try:
+            self.conn = sqlite3.connect(file)
+        except sqlite3.OperationalError as err:
+            raise RuntimeError('Failed to open SQLite database from %s.' % file) from err
+
         if os.name == 'nt':  # Windows
             import win32api  # From the pywin32 PIP package.
             serial_to_mountpoints: Dict[int, Set[str]] = {}

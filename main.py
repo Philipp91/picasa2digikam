@@ -24,8 +24,8 @@ def init_argparse() -> ArgumentParser:
     parser.add_argument('--dry_run', action='store_true')
     parser.add_argument('--verbose', '-v', action='count', default=0,
                         help='Log verbosity. Pass -vv to see debug output.')
-    parser.add_argument('--skip_same_rect', action=argparse.BooleanOptionalAction, 
-                        help="Skip or not to skip adding face to digiKam if it already has that rectangle defined")
+    parser.add_argument('--skip_same_rect', action=argparse.BooleanOptionalAction,
+                        help='Skip or not to skip adding face to digiKam if it already has that rectangle defined')
     return parser
 
 
@@ -42,8 +42,8 @@ def main() -> None:
     log_handler.setLevel(30 - (10 * args.verbose))
 
     if not args.dry_run:
-        backup_path = '%s.bak.%i' % (args.digikam_db, time.time())
-        logging.info('Creating database backup at %s')
+        backup_path = f'{args.digikam_db}.bak.{time.time():d}'
+        logging.info(f'Creating database backup at {backup_path}')
         shutil.copyfile(args.digikam_db, backup_path)
 
     logging.info('Inspecting existing digiKam database')

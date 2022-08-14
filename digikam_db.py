@@ -23,11 +23,11 @@ class DigikamDb(object):
 
     def __init__(self, file: Path):
         self.file = file
-        logging.debug("file=%s" % file)
+        logging.debug(f'file={file}')
         try:
             self.conn = sqlite3.connect(file)
         except sqlite3.OperationalError as err:
-            raise RuntimeError('Failed to open SQLite database from %s.' % file) from err
+            raise RuntimeError(f'Failed to open SQLite database from {file}.') from err
 
         if os.name == 'nt':  # Windows
             import win32api  # From the pywin32 PIP package.
@@ -37,7 +37,7 @@ class DigikamDb(object):
                 if serial < 0:
                     serial = serial + (1 << 32)  # Convert int32 to uint32
                 serial_to_mountpoints.setdefault(serial, set()).add(sdiskpart.mountpoint)
-            logging.debug('serial_to_mountpoints=%s' % serial_to_mountpoints)
+            logging.debug(f'serial_to_mountpoints={serial_to_mountpoints}')
             def volume_uuid_to_mountpoints(uuid: str) -> Set[str]:
                 # On Windows, digiKam uses the serial number in hex format as the UUID:
                 # https://invent.kde.org/frameworks/solid/-/blob/006e013d18c20cf2c98cf1776d768476978a1a63/src/solid/devices/backends/win/winstoragevolume.cpp#L57
@@ -46,7 +46,7 @@ class DigikamDb(object):
             dev_to_mountpoints: Dict[str, Set[str]] = {}
             for sdiskpart in psutil.disk_partitions():
                 dev_to_mountpoints.setdefault(sdiskpart.device, set()).add(sdiskpart.mountpoint)
-            logging.debug('dev_to_mountpoints=%s' % dev_to_mountpoints)
+            logging.debug(f'dev_to_mountpoints={dev_to_mountpoints}')
             def volume_uuid_to_mountpoints(uuid: str) -> Set[str]:
                 # On Unix, we use a trick with realpath and /dev/disk/by-uuid' to find the main mount point.
                 return dev_to_mountpoints[os.path.realpath(Path('/dev/disk/by-uuid') / uuid.upper())]
@@ -55,9 +55,10 @@ class DigikamDb(object):
         for row in self.conn.cursor().execute('SELECT id, type, identifier, specificPath FROM AlbumRoots WHERE status = 0'):
             id, type, identifier, specific_path = row
             if type != 1 and type != 2 and type != 3:  # 0=Undefined, 1=VolumeHardWired, 2=VolumeRemovable, 3=Network
-                logging.info('Skipping album %s at %s on %s because it is not recognized disk type' % (id, specific_path, identifier))
+                logging.info(
+                    f'Skipping album {id} at {specific_path} on {identifier} because it is not recognized disk type')
                 continue
-            logging.debug('id=%s specific_path=%s identifier=%s' % (id, specific_path, identifier))
+            logging.debug(f'id={id} specific_path={specific_path} identifier={identifier}')
             if identifier.startswith('volumeid:?uuid='):
                 if specific_path.startswith('/'):
                     specific_path = specific_path[1:]
@@ -68,9 +69,9 @@ class DigikamDb(object):
             elif identifier.startswith('networkshareid:?mountpath='):
                 self.album_roots[identifier[26:]] = id
             else:
-                raise ValueError('Unsupported volume type %s' % identifier)
+                raise ValueError(f'Unsupported volume type {identifier}')
                 
-        logging.debug('album_roots=%s' % self.album_roots)
+        logging.debug(f'album_roots={self.album_roots}')
 
         self.person_root_tag = self._detect_person_root_tag()
         self.internal_tags_id = self.find_tag(0, _INTERNAL_ROOT_TAG_NAME)
@@ -100,9 +101,10 @@ class DigikamDb(object):
             album_id = self._fetchcell('SELECT id FROM Albums WHERE albumRoot = ? AND relativePath = ?',
                                        (root_id, relative_path))
             if album_id is None:
-                logging.warning('No digiKam Album found for %s (relative path %s) under root %s' % (path, relative_path, root_id))
+                logging.warning(
+                    f'No digiKam Album found for {path} (relative path {relative_path}) under root {root_id}')
             return album_id
-        raise ValueError('No digiKam AlbumRoot found for %s, only have %s' % (path, self.album_roots))
+        raise ValueError(f'No digiKam AlbumRoot found for {path}, only have {self.album_roots}')
 
     def get_album_images(self, album_id: int) -> Dict[str, id]:
         """Returns a dict from filename to id in Images."""
@@ -114,9 +116,9 @@ class DigikamDb(object):
         cur.execute('SELECT width, height, orientation FROM ImageInformation WHERE imageid = ?', (image_id,))
         row = cur.fetchone()
         if row is None:
-            raise ValueError('Image with ID %s not found' % image_id)
+            raise ValueError(f'Image with ID {image_id} not found')
         if not row[0] or not row[1]:
-            raise ValueError('Size of image with ID %s is not in the database' % image_id)
+            raise ValueError(f'Size of image with ID {image_id} is not in the database')
         return row[0], row[1], row[2]
 
     def find_tag(self, parent_tag: int, name: str) -> Optional[int]:
@@ -128,7 +130,7 @@ class DigikamDb(object):
         tag_id = self.find_tag(parent_tag, name)
         if tag_id:
             return tag_id
-        logging.info('Creating digiKam tag %s' % name)
+        logging.info(f'Creating digiKam tag {name}')
         if dry_run:
             return -1  # Pretend we created it
         self.conn.execute('INSERT INTO Tags (pid, name) VALUES (?, ?)', (parent_tag, name))
@@ -162,7 +164,7 @@ class DigikamDb(object):
         tag_id = self.find_person_tag(person_name)
         if tag_id:
             return tag_id
-        logging.info('Creating digiKam person tag %s' % person_name)
+        logging.info(f'Creating digiKam person tag {person_name}')
         if dry_run:
             return -1  # Pretend we created it
         self.conn.execute('INSERT INTO Tags (pid, name) VALUES (?, ?)', (self.person_root_tag, person_name))
@@ -187,7 +189,7 @@ class DigikamDb(object):
     def image_has_pick_tag(self, image_id: int) -> bool:
         """Returns true if the given image has any of the (four) "Pick" tags."""
         return self._fetchcell(
-            'SELECT tagid FROM ImageTags WHERE imageid = ? AND tagid IN (%s)' % ','.join('?' * len(self.pick_tags)),
+            f'SELECT tagid FROM ImageTags WHERE imageid = ? AND tagid IN ({",".join("?" * len(self.pick_tags))})',
             (image_id,) + tuple(self.pick_tags)) is not None
 
     def add_image_tag(self, image_id: int, tag_id: int) -> bool:

@@ -5,7 +5,7 @@ import logging
 def parse_rect64(data: str) -> Tuple[float, float, float, float]:  # left, top, right, bottom
     """https://gist.github.com/fbuchinger/1073823#file-picasa-ini-L147-L160"""
     # Strip the rect64() from the outside.
-    assert data.startswith("rect64(") and data.endswith(")"), input
+    assert data.startswith('rect64(') and data.endswith(')'), input
     data = data[7:-1]
     assert len(data) >= 1
     data = data.zfill(16)  # Zeros in front, as Picasa abbreviates.
@@ -48,7 +48,7 @@ def to_digikam_rect(image_size: Tuple[int, int, int], rect: Tuple[float, float, 
         y1 = 1 - right
         y2 = 1 - left
     else:
-        raise ValueError('Unsupported orientation %s' % orientation)
+        raise ValueError(f'Unsupported orientation {orientation}')
 
     return '<rect x="{:d}" y="{:d}" width="{:d}" height="{:d}"/>'.format(
         int(width * x1),

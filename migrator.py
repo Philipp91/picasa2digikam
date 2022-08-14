@@ -36,7 +36,7 @@ def learn_contact_ids(input_dir: Path, ini_file_name: str, contact_id_2_nameset:
         for contact_id, value in ini['Contacts2'].items():
             person_name = value.split(';')[0]
             if contact_id not in contact_id_2_nameset:
-                logging.info(f"Learned name for {contact_id}='{person_name}' from {ini_file}")
+                logging.info(f'Learned name for {contact_id}=\'{person_name}\' from {ini_file}')
                 contact_id_2_nameset[contact_id] = {person_name}
             else:
                 if person_name not in contact_id_2_nameset[contact_id]:
@@ -48,9 +48,9 @@ def learn_contact_ids(input_dir: Path, ini_file_name: str, contact_id_2_nameset:
     if 'Contacts' in ini:
         for contact_id, value in ini['Contacts'].items():
             picasa_name_hash = value.split(',')[1]
-            person_name = f".NoName-{picasa_name_hash}"
+            person_name = f'.NoName-{picasa_name_hash}'
             if contact_id not in contact_id_2_nameset:
-                logging.info(f"Learned old picasa name hash for {contact_id}='{person_name}' from {ini_file}")
+                logging.info(f'Learned old picasa name hash for {contact_id}=\'{person_name}\' from {ini_file}')
                 contact_id_2_nameset[contact_id] = {person_name}
 
 def migrate_directories_under(input_root_dir: Path, 
@@ -85,9 +85,9 @@ def migrate_directories_under(input_root_dir: Path,
             for ini_file in ( _PICASA_INI_FILE , _OLD_PICASA_INI_FILE):
                 learn_contact_ids(input_dir,ini_file,contact_id_2_nameset)
 
-        global_names = {k: "|".join(sorted(v)) for k,v in contact_id_2_nameset.items()}
+        global_names = {k: '|'.join(sorted(v)) for k, v in contact_id_2_nameset.items()}
 
-        logging.debug(f"global_names={global_names}")
+        logging.debug(f'global_names={global_names}')
 
     contact_tags_per_dir: Dict[Path, ContactTags] = {}
 
@@ -101,9 +101,9 @@ def migrate_directories_under(input_root_dir: Path,
             if any([_is_photo_file(file) for file in files]):
                 logging.warning(f'Found photos but no .ini in {dir}')
             else:
-                logging.warning(f"No photos and no .ini file in {dir}")
+                logging.warning(f'No photos and no .ini file in {dir}')
             continue
-        logging.debug(f"Processing {Path(dir/ini_file)}")
+        logging.debug(f'Processing {Path(dir / ini_file)}')
         contact_tags_per_dir[dir] = migrate_directory(dir, files, db,
             	contact_tags_per_dir, global_names,
             	dry_run=dry_run, ini_file_name=ini_file,
@@ -120,9 +120,9 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
     """Migrates metadata of all photo files in the given directory."""
     logging.info('===========================================================================================')
     if input_dir.name == '.picasaoriginals':
-        logging.info('Skipping %s' % input_dir)
+        logging.info(f'Skipping {input_dir}')
         return {}
-    logging.info('Now migrating %s' % input_dir)
+    logging.info(f'Now migrating {input_dir}')
 
     # Find digiKam album.
     album_id = db.find_album_by_dir(input_dir)
@@ -141,7 +141,7 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
     album_to_tag = _map_albums_to_tags(ini, db, used_ini_sections, dry_run=dry_run)
 
     self_contact_to_tag = _map_contacts_to_tags(ini['Contacts2'], db, dry_run=dry_run) if 'Contacts2' in ini else {}
-    logging.debug('self_contact_to_tag=%s' % self_contact_to_tag)
+    logging.debug(f'self_contact_to_tag={self_contact_to_tag}')
     
     # Merge contacts declared in parent ini files.
     contact_to_tag = self_contact_to_tag.copy()
@@ -165,20 +165,20 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
                              skip_same_rect=skip_same_rect, prioritize_global_names=prioritize_global_names, 
                              dry_run=dry_run)
             except Exception as e:
-                logging.error(f"Exception: {e}")
+                logging.error(f'Exception: {e}')
                 logging.error(traceback.format_exc())
-                raise RuntimeError('Error when processing %s' % (input_dir / filename)) from e
+                raise RuntimeError(f'Error when processing {input_dir / filename}') from e
 
     # Make sure we actually read all the data from the ini file.
     unused_ini_sections = set(ini.sections()) - used_ini_sections
     unused_photo_sections = {section for section in unused_ini_sections if _is_photo_file(section)}
     if unused_photo_sections:
-        logging.warning(('Some files have metadata in %s but are gone ' +
-                         '(probably fine, they might have been deleted or moved elsewhere on purpose): %s')
-                        % (ini_file, unused_photo_sections))
+        logging.warning(
+            f'Some files have metadata in {ini_file} but are gone (probably fine, they might have been ' +
+            f'deleted or moved elsewhere on purpose): {unused_photo_sections}')
     unused_ini_sections -= unused_photo_sections
     if unused_ini_sections:
-        logging.warning('Unused INI sections in %s: %s' % (ini_file, unused_ini_sections))
+        logging.warning(f'Unused INI sections in {ini_file}: {unused_ini_sections}')
 
     return self_contact_to_tag  # For use in subdirectories
 
@@ -196,9 +196,9 @@ def migrate_file(filename: str, image_id: int, ini_section: configparser.Section
         used_ini_keys.add('star')
         if db.image_has_pick_tag(image_id):
             logging.warning(
-                'Not applying star label to %s (%s) because it already has a Pick label' % (image_id, filename))
+                f'Not applying star label to {image_id} ({filename}) because it already has a Pick label')
         else:
-            logging.debug('Applying star label to %s (%s)' % (image_id, filename))
+            logging.debug(f'Applying star label to {image_id} ({filename})')
             if not dry_run:
                 db.star_image(image_id)
 
@@ -206,7 +206,7 @@ def migrate_file(filename: str, image_id: int, ini_section: configparser.Section
     if albums:
         used_ini_keys.add('albums')
         for album_id in albums.split(','):
-            logging.debug('Adding album %s to image %s (%s)' % (album_id, image_id, filename))
+            logging.debug(f'Adding album {album_id} to image {image_id} ({filename})')
             if not dry_run:
                 db.add_image_tag(image_id, album_to_tag[album_id])
 
@@ -216,7 +216,7 @@ def migrate_file(filename: str, image_id: int, ini_section: configparser.Section
         if filename.lower().endswith('.psd'):
             # Note: digiKam doesn't seem to know the size of PSD files and thus also
             # can't place face tags on them.
-            logging.warning('Skipping faces on %s because of PSD format' % filename)
+            logging.warning(f'Skipping faces on {filename} because of PSD format')
         else:
             for face_data in faces.split(';'):
                 migrate_face(image_id, filename, face_data, db, contact_to_tag, global_names, 
@@ -226,7 +226,7 @@ def migrate_file(filename: str, image_id: int, ini_section: configparser.Section
 
     unused_ini_keys = set(ini_section.keys()) - used_ini_keys
     if unused_ini_keys:
-        logging.warning('Unused INI keys for %s: %s' % (filename, unused_ini_keys))
+        logging.warning(f'Unused INI keys for {filename}: {unused_ini_keys}')
 
 
 def migrate_face(image_id: int, 
@@ -254,28 +254,28 @@ def migrate_face(image_id: int,
             if contact_id not in global_names:
                 # This can happen often if not using contacts.xml
                 # Add to global
-                person_name = f".NoName-{contact_id}-from-rect64"
+                person_name = f'.NoName-{contact_id}-from-rect64'
                 logging.info(f'Learned {person_name} from a rect64 tag belonging to {filename}')
                 global_names[contact_id] = person_name
             tag_id = db.find_or_create_person_tag(global_names[contact_id], dry_run=dry_run)
-            contact_to_tag[contact_id] = tag_id;
+            contact_to_tag[contact_id] = tag_id
     else:
         # global_names (learned from contacts.xml) has higher priority
-        if (contact_id in global_names):
+        if contact_id in global_names:
             tag_id = db.find_or_create_person_tag(global_names[contact_id], dry_run=dry_run)
-            contact_to_tag[contact_id] = tag_id;
-        elif (contact_id in contact_to_tag):
+            contact_to_tag[contact_id] = tag_id
+        elif contact_id in contact_to_tag:
             tag_id = contact_to_tag[contact_id]
         else:
-            person_name = f".NoName-{contact_id}-from-rect64"
+            person_name = f'.NoName-{contact_id}-from-rect64'
             logging.info(f'Learned {person_name} from a rect64 tag belonging to {filename}')
             global_names[contact_id] = person_name
             tag_id = db.find_or_create_person_tag(person_name, dry_run=dry_run)
-            contact_to_tag[contact_id] = tag_id;
+            contact_to_tag[contact_id] = tag_id
 
     if db.image_has_tag(image_id, tag_id):
         logging.warning(
-            'Not applying face %s (%s) to %s (%s) because it already has that face tag' % (tag_id, contact_id, image_id, filename))
+            f'Not applying face {tag_id} ({contact_id}) to {image_id} ({filename}) because it already has that face tag')
         return
 
     # Convert the rectangle.
@@ -289,7 +289,9 @@ def migrate_face(image_id: int,
     # and then run this script again, you end up with another rect mapped to Picasa's name -- it's a conundrum..
     if db.image_has_property(image_id, _FACE_TAG_REGION_PROPERTY, digikam_rect):
         if skip_same_rect is None:
-            raise RuntimeError(f"digiKam already has face rectangle {digikam_rect} defined.  Please specify what to do by running with argument --skip_same_rect or --no-skip_same_rect")            
+            raise RuntimeError(
+                f'digiKam already has face rectangle {digikam_rect} defined. ' +
+                'Please specify what to do by running with argument --skip_same_rect or --no-skip_same_rect')
         elif skip_same_rect:
             logging.warning(
                 f'Not applying face {tag_id} ({contact_id}) to {image_id} ({filename}) because it already has that face rectangle')
@@ -316,7 +318,7 @@ def _map_albums_to_tags(
             album_id = section_name[7:]
             section = ini[section_name]
             if not 'name' in section:
-                logging.debug('Skipping unnamed album %s' % album_id)
+                logging.debug(f'Skipping unnamed album {album_id}')
                 continue
             assert section['name']
             used_ini_sections.add(section_name)
@@ -334,5 +336,5 @@ def _map_contacts_to_tags(
     for contact_id, value in contacts_section.items():
         person_name = value.split(';')[0]
         result[contact_id] = db.find_or_create_person_tag(person_name, dry_run=dry_run)
-        logging.debug("person_name=%s contact_id=%s tag=%s" % (person_name, contact_id, result[contact_id]))
+        logging.debug(f'person_name={person_name} contact_id={contact_id} tag={result[contact_id]}')
     return result

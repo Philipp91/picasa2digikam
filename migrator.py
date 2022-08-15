@@ -135,6 +135,22 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
     ini = configparser.ConfigParser(strict=False)
     ini_file = input_dir / ini_file_name
     try:
+        print(f'Here comes {ini_file} in binary:')
+        with open(ini_file, "rb") as f:
+            dd = f.read()
+            print(f'It is {len(dd)} bytes long')
+            print(dd)
+            print(f'That was {ini_file}.')
+            print('Now trying to decode it:')
+            ss = dd.decode('utf-8')
+            print(ss)
+            print(f'That was {ini_file} decoded.')
+        
+        print(f'Here comes {ini_file} read directly as UTF-8:')
+        with open(ini_file, "r", encoding='utf-8') as f:
+            print(f.read())
+        print(f'That was {ini_file} as UTF-8.')
+        
         ini.read(ini_file, encoding='utf8')
     except Exception as err:
         raise RuntimeError(f'Failed to read ini file "{ini_file}".') from err

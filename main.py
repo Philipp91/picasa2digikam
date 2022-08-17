@@ -30,6 +30,7 @@ def init_argparse() -> ArgumentParser:
 
 
 def main() -> None:
+    sys.stdout.reconfigure(encoding='utf-8')
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
     log_handler = logging.StreamHandler(sys.stdout)

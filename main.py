@@ -43,7 +43,7 @@ def main() -> None:
     log_handler.setLevel(30 - (10 * args.verbose))
 
     if not args.dry_run:
-        backup_path = f'{args.digikam_db}.bak.{time.time():d}'
+        backup_path = f'{args.digikam_db}.bak.{int(time.time()):d}'
         logging.info(f'Creating database backup at {backup_path}')
         shutil.copyfile(args.digikam_db, backup_path)
 

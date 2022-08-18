@@ -151,7 +151,9 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
     for parent_dir in input_dir.parents:
         for contact_id, tag_id in contact_tags_per_dir.get(parent_dir, {}).items():
             if contact_id in contact_to_tag:
-                assert contact_to_tag[contact_id] == tag_id
+                assert contact_to_tag[contact_id] == tag_id, (
+                    f'{contact_id} maps to {contact_to_tag[contact_id]} in {input_dir} but to {tag_id} in an ancestor dir'
+                )
             else:
                 contact_to_tag[contact_id] = tag_id
 

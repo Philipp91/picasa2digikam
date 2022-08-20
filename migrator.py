@@ -151,7 +151,21 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
     for parent_dir in input_dir.parents:
         for contact_id, tag_id in contact_tags_per_dir.get(parent_dir, {}).items():
             if contact_id in contact_to_tag:
-                assert contact_to_tag[contact_id] == tag_id
+                # The tag_id is a bijective mapping of the contact name.
+                # This check detects situations where the same Picasa contact ID
+                # maps to different person names (and thus different tag_ids) at
+                # different levels of the picasa.ini hierarchy. This can happen
+                # when the user renamed the person in Picasa before writing to one
+                # and after writing to the other directory.
+                if contact_to_tag[contact_id] != tag_id:
+                    error_msg = (
+                        f'In the {_PICASA_INI_FILE} files in {input_dir} and {parent_dir}, ' +
+                        f'the contact with ID {contact_id} has different names. Please open ' +
+                        f'up those files and adjust the names to be the same everywhere.'
+                    )
+                    logging.error(error_msg)
+                    if not dry_run:
+                        raise ValueError(error_msg)
             else:
                 contact_to_tag[contact_id] = tag_id
 

@@ -137,7 +137,7 @@ class DigikamDb(object):
             return tag_id
         logging.info(f'Creating digiKam tag {name}')
         if dry_run:
-            return -int(hashlib.md5(f'{parent_tag}/{name}'.encode()).hexdigest(), 16)  # Pretend we created it
+            return int(hashlib.md5(f'{parent_tag}/{name}'.encode()).hexdigest(), 16) % -2**63  # Pretend we created it
         self.conn.execute('INSERT INTO Tags (pid, name) VALUES (?, ?)', (parent_tag, name))
         tag_id = self.find_tag(parent_tag, name)
         assert tag_id
@@ -171,7 +171,7 @@ class DigikamDb(object):
             return tag_id
         logging.info(f'Creating digiKam person tag {person_name}')
         if dry_run:
-            return -int(hashlib.md5(person_name.encode()).hexdigest(), 16)  # Pretend we created it
+            return int(hashlib.md5(person_name.encode()).hexdigest(), 16) % -2**63  # Pretend we created it
         self.conn.execute('INSERT INTO Tags (pid, name) VALUES (?, ?)', (self.person_root_tag, person_name))
         tag_id = self.find_person_tag(person_name)
         assert tag_id

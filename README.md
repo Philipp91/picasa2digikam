@@ -30,7 +30,9 @@ It does not write into the original Picasa file system, so the original files sh
 
 ## Installation
 
-Clone the repository and `cd` into it. Install `pip3 install psutil`. On Windows, also `pip3 install pywin32`.
+Clone the repository and `cd` into it.
+Make sure you have Python 3.10 or newer installed.
+Install `pip3 install psutil`. On Windows, also `pip3 install pywin32`.
 
 ## Suggested usage
 

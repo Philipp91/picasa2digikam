@@ -46,7 +46,7 @@ class DigikamDb(object):
             def volume_uuid_to_mountpoints(uuid: str) -> Set[str]:
                 # On Windows, digiKam uses the serial number in hex format as the UUID:
                 # https://invent.kde.org/frameworks/solid/-/blob/006e013d18c20cf2c98cf1776d768476978a1a63/src/solid/devices/backends/win/winstoragevolume.cpp#L57
-                return serial_to_mountpoints[int(uuid, 16)]
+                return serial_to_mountpoints[int(uuid.split('&')[0], 16)]
         else:  # Tested on Linux
             dev_to_mountpoints: Dict[str, Set[str]] = {}
             for sdiskpart in psutil.disk_partitions():

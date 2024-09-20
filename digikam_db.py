@@ -55,9 +55,9 @@ class DigikamDb(object):
             def volume_uuid_to_mountpoints(uuid: str) -> Set[str]:
                 # On Unix, we use a trick with realpath and /dev/disk/by-uuid' to find the main mount point.
                 try:
-                    return dev_to_mountpoints[os.path.realpath(Path('/dev/disk/by-uuid') / uuid.upper())]
+                    return dev_to_mountpoints[os.path.realpath(Path('/dev/disk/by-uuid') / uuid.split('&')[0].upper())]
                 except KeyError:
-                    return dev_to_mountpoints[os.path.realpath(Path('/dev/disk/by-uuid') / uuid.lower())]
+                    return dev_to_mountpoints[os.path.realpath(Path('/dev/disk/by-uuid') / uuid.split('&')[0].lower())]
 
         self.album_roots = {}
         for row in self.conn.cursor().execute('SELECT id, type, identifier, specificPath FROM AlbumRoots WHERE status = 0'):

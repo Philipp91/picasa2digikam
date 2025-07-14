@@ -22,9 +22,31 @@ ContactTags = Dict[str, Optional[int]]
 GlobalNames = Dict[str, str] # maps contact_id to name globally (but may be overridden per directory)
 ContactID2NamesSet = Dict[str, Set[str]]
 
-def _is_photo_file(file: str) -> bool:
-    file = file.lower()
-    return file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.raw') or file.endswith('.psd')
+_PHOTO_AND_VIDEO_EXTENSIONS = {
+    # Photo:
+    '.jpg',
+    '.jpeg',
+    '.raw',
+    '.psd',
+    '.webp',
+    # Video:
+    '.mkv',  # Matroska
+    '.mp4',  # MPEG-4
+    '.mov',  # QuickTime
+    '.avi',  # Audio Video Interleave
+    '.wmv',  # Windows Media Video
+    '.flv',  # Flash Video
+    '.webm', # Web Media
+    '.mpeg', # MPEG-1 or MPEG-2
+    '.mpg',  # MPEG (alternate extension)
+    '.m4v',  # MPEG-4 Apple variant
+    '.3gp',  # 3GPP
+    '.3g2',  # 3GPP2
+    '.ogv',  # Ogg Video
+}
+
+def _is_photo_or_video_file(file: str) -> bool:
+    return Path(file).suffix.lower() in _PHOTO_AND_VIDEO_EXTENSIONS
 
 def learn_contact_ids(input_dir: Path, ini_file_name: str, contact_id_2_nameset: ContactID2NamesSet):
     """Learn contact_id to name mapping from [Contacts2] sections of .ini file"""
@@ -98,7 +120,7 @@ def migrate_directories_under(input_root_dir: Path,
         elif _OLD_PICASA_INI_FILE in files:
             ini_file = _OLD_PICASA_INI_FILE
         else:
-            if any([_is_photo_file(file) for file in files]):
+            if any(_is_photo_or_video_file(file) for file in files):
                 logging.warning(f'Found photos but no .ini in {dir}')
             else:
                 logging.warning(f'No photos and no .ini file in {dir}')
@@ -170,7 +192,7 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
                 contact_to_tag[contact_id] = tag_id
 
     # Migrate file by file.
-    for filename in filter(_is_photo_file, files):
+    for filename in filter(_is_photo_or_video_file, files):
         if filename not in album_images:
             raise ValueError(f'digiKam does not know {(input_dir / filename)}')
         image_id = album_images[filename]
@@ -188,7 +210,7 @@ def migrate_directory(input_dir: Path, files: List[str], db: DigikamDb,
 
     # Make sure we actually read all the data from the ini file.
     unused_ini_sections = set(ini.sections()) - used_ini_sections
-    unused_photo_sections = {section for section in unused_ini_sections if _is_photo_file(section)}
+    unused_photo_sections = {section for section in unused_ini_sections if _is_photo_or_video_file(section)}
     if unused_photo_sections:
         logging.warning(
             f'Some files have metadata in {ini_file} but are gone (probably fine, they might have been ' +

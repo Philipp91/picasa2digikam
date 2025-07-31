@@ -9,8 +9,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
-from digikam_db import DigikamDb
-import rect64
+from picasa2digikam.digikam_db import DigikamDb
+import picasa2digikam.rect64 as rect64
 
 _PICASA_INI_FILE = '.picasa.ini'
 _OLD_PICASA_INI_FILE = 'Picasa.ini' # found this in folders from 2002!

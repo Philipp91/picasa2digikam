@@ -9,8 +9,8 @@ import argparse
 from argparse import ArgumentParser
 from pathlib import Path
 
-import digikam_db
-import migrator
+import picasa2digikam.digikam_db as digikam_db
+import picasa2digikam.migrator as migrator
 
 
 def init_argparse() -> ArgumentParser:

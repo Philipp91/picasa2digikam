@@ -2,7 +2,7 @@
 
 import unittest
 
-from rect64 import parse_hexfloat, parse_rect64, to_digikam_rect
+from picasa2digikam.rect64 import parse_hexfloat, parse_rect64, to_digikam_rect
 
 
 class TestRect64Parser(unittest.TestCase):

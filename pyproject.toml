@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "picasa2digikam"
+version = "0.1.0"
+authors = [
+  { name="Philipp Keck", email="author@example.com" },
+]
+description = "A script to migrate Picasa metadata to digiKam"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "psutil",
+    "pywin32; sys_platform == 'win32'",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/Philipp91/picasa2digikam"
+"Bug Tracker" = "https://github.com/Philipp91/picasa2digikam/issues"
+
+[project.scripts]
+picasa2digikam = "picasa2digikam.main:main"
+
+# Add this new section to tell setuptools where to find the package
+[tool.setuptools]
+packages = ["picasa2digikam"]

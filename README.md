@@ -1,5 +1,7 @@
 # picasa2digikam
 
+[![Run Python Tests](https://github.com/Philipp91/picasa2digikam/actions/workflows/tests.yml/badge.svg)](https://github.com/Philipp91/picasa2digikam/actions/workflows/tests.yml)
+
 A script to migrate Picasa metadata from its `.picasa.ini` files and/or `contacts.xml` file to the 
 [digiKam](https://www.digikam.org/) database.
 
